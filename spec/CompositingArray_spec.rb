@@ -1,22 +1,11 @@
 
-require_relative '../lib/compositing-array.rb'
+if $__compositing_array__spec__development
+  require_relative '../lib/compositing-array.rb'
+else
+  require 'compositing-array'
+end
 
 describe ::CompositingArray do
-
-  before :all do
-
-    module ::CompositingArray::MockA
-      # needed for ccv ancestor determination
-      def self.some_configuration
-      end
-    end
-    module ::CompositingArray::MockB
-    end
-      
-    @configuration_instance = ::CompositingArray::MockA
-    @sub_configuration_instance = ::CompositingArray::MockB
-    
-  end
 
   ################
   #  initialize  #

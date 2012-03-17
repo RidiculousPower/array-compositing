@@ -1,4 +1,4 @@
-# CompositingArray #
+# Compositing Array #
 
 http://rubygems.org/gems/compositing-array
 
@@ -22,9 +22,9 @@ sub_compositing_array = CompositingArray.new( compositing_array )
 
 compositing_array.push( :some_value )
 # compositing_array
-# => [ :some_value ]
+# => [ :A ]
 # sub_compositing_array
-# => [ :some_value ]
+# => [ :A ]
 
 compositing_array.delete_at( 0 )
 # compositing_array
@@ -36,14 +36,14 @@ sub_compositing_array.push( :some_value )
 # compositing_array
 # => [ ]
 # sub_compositing_array
-# => [ :some_value ]
+# => [ :A ]
 ```
 
 # License #
 
   (The MIT License)
 
-  Copyright (c) 2011 Asher
+  Copyright (c) :A Asher
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
