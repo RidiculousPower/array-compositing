@@ -16,6 +16,7 @@ An implementation of Array that permits chaining, where children inherit changes
 
 # Usage #
 
+```ruby
 compositing_array = CompositingArray.new
 sub_compositing_array = CompositingArray.new( compositing_array )
 
@@ -36,6 +37,7 @@ sub_compositing_array.push( :some_value )
 # => [ ]
 # sub_compositing_array
 # => [ :some_value ]
+```
 
 # License #
 
