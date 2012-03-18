@@ -67,7 +67,132 @@ class ::CompositingArray < ::Array
 
   end
 
+  ######################################  Subclass Hooks  ##########################################
+
+  ##################
+  #  pre_set_hook  #
+  ##################
+
+  def pre_set_hook( index, object, is_insert = false )
+
+    return object
+    
+  end
+
+  ###################
+  #  post_set_hook  #
+  ###################
+
+  def post_set_hook( index, object, is_insert = false )
+    
+    return object
+    
+  end
+
+  ##################
+  #  pre_get_hook  #
+  ##################
+
+  def pre_get_hook( index )
+    
+    # false means get does not take place
+    return true
+    
+  end
+
+  ###################
+  #  post_get_hook  #
+  ###################
+
+  def post_get_hook( index, object )
+    
+    return object
+    
+  end
+
+  #####################
+  #  pre_delete_hook  #
+  #####################
+
+  def pre_delete_hook( index )
+    
+    # false means delete does not take place
+    return true
+    
+  end
+
+  ######################
+  #  post_delete_hook  #
+  ######################
+
+  def post_delete_hook( index, object )
+    
+    return object
+    
+  end
+
+  ########################
+  #  child_pre_set_hook  #
+  ########################
+
+  def child_pre_set_hook( index, object, is_insert = false )
+
+    return object
+    
+  end
+
+  #########################
+  #  child_post_set_hook  #
+  #########################
+
+  def child_post_set_hook( index, object, is_insert = false )
+    
+    return object
+    
+  end
+
+  ###########################
+  #  child_pre_delete_hook  #
+  ###########################
+
+  def child_pre_delete_hook( index )
+    
+    # false means delete does not take place
+    return true
+    
+  end
+
+  ############################
+  #  child_post_delete_hook  #
+  ############################
+
+  def child_post_delete_hook( index, object )
+    
+    return object
+    
+  end
+
   #####################################  Self Management  ##########################################
+
+  ########
+  #  []  #
+  ########
+
+  def []( index )
+
+    object = nil
+    
+    if pre_get_hook( index )
+    
+      object = super( index )
+    
+      object = post_get_hook( index, object )
+
+    end
+      
+    return object
+    
+  end
 
   #########
   #  []=  #
@@ -83,11 +208,15 @@ class ::CompositingArray < ::Array
     # if we are replacing we are either replacing a parent element or an element in self
     # * if replacing parent element, track and exclude parent changes
 
+    object = pre_set_hook( index, object, false )
+    
     non_cascading_set( index, object )
 
     if index_inside_parent_objects?( index )
       @replaced_parents[ index ] = true
     end
+
+    object = post_set_hook( index, object, false )
 
     @sub_composite_arrays.each do |this_sub_array|
       this_sub_array.instance_eval do
@@ -108,7 +237,14 @@ class ::CompositingArray < ::Array
   public
 
   def insert( index, *objects )
-
+    
+    objects_to_insert = [ ]
+    objects.each_with_index do |this_object, this_index|
+      this_object = pre_set_hook( index + this_index, this_object, true )
+      objects_to_insert.push( this_object )
+    end
+    objects = objects_to_insert
+    
     # if we have less elements in self than the index we are inserting at
     # we need to make sure the nils inserted cascade
     if index > count
@@ -127,13 +263,17 @@ class ::CompositingArray < ::Array
       update_corresponding_index_for_local_change( index, objects.count )
     end
 
+    objects.each_with_index do |this_object, this_index|
+      objects[ this_index ] = post_set_hook( index + this_index, this_object, true )
+    end
+
     @sub_composite_arrays.each do |this_sub_array|
       this_sub_array.instance_eval do
         update_as_sub_array_for_parent_insert( index, *objects )
       end
     end
 
-    return self
+    return objects
 
   end
 
@@ -143,9 +283,7 @@ class ::CompositingArray < ::Array
 
   def push( *objects )
 
-    insert( count, *objects )
-
-    return self
+    return insert( count, *objects )
 
   end
   alias_method :<<, :push
@@ -224,7 +362,7 @@ class ::CompositingArray < ::Array
   ###############
 
   private
-    alias_method :non_cascading_delete_at, :delete_at
+    alias_method :super_non_cascading_delete_at, :delete_at
   public
 
   def delete_at( index )
@@ -665,6 +803,26 @@ class ::CompositingArray < ::Array
       private ######################################################################################
   ##################################################################################################
 
+  #############################
+  #  non_cascading_delete_at  #
+  #############################
+
+  def non_cascading_delete_at( index )
+    
+    object = nil
+    
+    if pre_delete_hook( index )
+    
+      object = super_non_cascading_delete_at( index )
+
+      object = post_delete_hook( index, object )
+
+    end
+    
+    return object
+    
+  end
+
 	################  Self Management for Inserts between Parent-Provided Elements  ##################
 
   ###################################
@@ -751,7 +909,13 @@ class ::CompositingArray < ::Array
 
   def update_parent_element_in_self( corresponding_index, object )
 
+    object = pre_set_hook( corresponding_index, object, false )
+    
+    object = child_pre_set_hook( corresponding_index, object, false )
+    
     non_cascading_set( corresponding_index, object )
+
+    child_post_set_hook( corresponding_index, object, false )
 
   end
 
@@ -803,7 +967,21 @@ class ::CompositingArray < ::Array
 
   def insert_parent_elements_in_self( corresponding_index, *objects )
 
+    objects_to_insert = [ ]
+    objects.each_with_index do |this_object, this_index|
+      this_object = pre_set_hook( corresponding_index + this_index, this_object, true )
+      this_object = child_pre_set_hook( corresponding_index + this_index, this_object, true )
+      # only keep objects the pre-set hook says to keep
+      objects_to_insert.push( this_object )
+    end
+    objects = objects_to_insert
+    
     non_cascading_insert( corresponding_index, *objects )
+
+    objects.each_with_index do |this_object, this_index|
+      post_set_hook( corresponding_index + this_index, this_object, true )
+      child_post_set_hook( corresponding_index + this_index, this_object, true )
+    end
 
   end
 
@@ -814,10 +992,14 @@ class ::CompositingArray < ::Array
   def update_as_sub_array_for_parent_delete( index )
 
     corresponding_index = @local_index_for_parent_index[ index ]
-
-    object = non_cascading_delete_at( corresponding_index )
-
+    
+    if child_pre_delete_hook( index )
+      object = non_cascading_delete_at( corresponding_index )
+    end
+    
     @parent_and_interpolated_object_count -= 1
+
+    child_post_delete_hook( index, object )
 
     @sub_composite_arrays.each do |this_array|
       this_array.instance_eval do
@@ -841,7 +1023,8 @@ class ::CompositingArray < ::Array
     @local_index_for_parent_index.each do |this_parent_index, this_local_index|
       if this_parent_index >= parent_index
         new_index = this_parent_index + step_value
-        stepped_indices[ new_index ] = @local_index_for_parent_index.delete( this_parent_index ) + step_value
+        new_local_index = @local_index_for_parent_index.delete( this_parent_index ) + step_value
+        stepped_indices[ new_index ] = new_local_index
       end
     end
 
