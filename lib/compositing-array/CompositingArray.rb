@@ -26,16 +26,9 @@ class ::CompositingArray < ::Array
     if @parent_composite_array = parent_composite_array
 
       # initialize contents of self from parent contents
-      push( *@parent_composite_array )
-
-      @parent_composite_array.count.times do |this_time|
-        @local_index_for_parent_index[ this_time ] = this_time
-      end
+      update_as_sub_array_for_parent_insert( 0, *@parent_composite_array )
 
       @parent_composite_array.register_sub_composite_array( self )
-
-      # since we have a super array we have to note how many objects it has before we insert any
-      @parent_and_interpolated_object_count = @parent_composite_array.count
 
     end
     
