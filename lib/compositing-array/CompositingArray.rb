@@ -23,6 +23,18 @@ class ::CompositingArray < ::Array
     # plus number of parent objects
     @parent_and_interpolated_object_count = 0    
 
+    initialize_for_parent( parent_composite_array )
+
+  end
+
+  ###################################  Sub-Array Management  #######################################
+
+  ###########################
+  #  initialize_for_parent  #
+  ###########################
+
+  def initialize_for_parent( parent_composite_array )
+
     if @parent_composite_array = parent_composite_array
 
       # initialize contents of self from parent contents
@@ -33,9 +45,7 @@ class ::CompositingArray < ::Array
     end
     
   end
-
-  ###################################  Sub-Array Management  #######################################
-
+  
   ##################################
   #  register_sub_composite_array  #
   ##################################
