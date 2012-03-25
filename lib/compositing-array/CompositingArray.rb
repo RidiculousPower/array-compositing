@@ -192,7 +192,7 @@ class ::CompositingArray < ::Array
       object = post_get_hook( index, object )
 
     end
-      
+    
     return object
     
   end
@@ -211,16 +211,22 @@ class ::CompositingArray < ::Array
     # if we are replacing we are either replacing a parent element or an element in self
     # * if replacing parent element, track and exclude parent changes
 
-    object = pre_set_hook( index, object, false )
+    unless @without_hooks
+      object = pre_set_hook( index, object, false )
+    end
     
-    non_cascading_set( index, object )
-
+    unless @without_hooks
+      non_cascading_set( index, object )
+    end
+    
     if index_inside_parent_objects?( index )
       @replaced_parents[ index ] = true
     end
 
-    object = post_set_hook( index, object, false )
-
+    unless @without_hooks
+      object = post_set_hook( index, object, false )
+    end
+    
     @sub_composite_arrays.each do |this_sub_array|
       this_sub_array.instance_eval do
         update_as_sub_array_for_parent_set( index, object )
@@ -229,6 +235,22 @@ class ::CompositingArray < ::Array
 
     return object
 
+  end
+  
+  #######################
+  #  set_without_hooks  #
+  #######################
+
+  def set_without_hooks( index, object )
+    
+    @without_hooks = true
+
+    self[ index ] = object
+    
+    @without_hooks = false
+    
+    return object
+    
   end
 
   ############
@@ -243,7 +265,9 @@ class ::CompositingArray < ::Array
     
     objects_to_insert = [ ]
     objects.each_with_index do |this_object, this_index|
-      this_object = pre_set_hook( index + this_index, this_object, true )
+      unless @without_hooks
+        this_object = pre_set_hook( index + this_index, this_object, true )
+      end
       objects_to_insert.push( this_object )
     end
     objects = objects_to_insert
@@ -267,19 +291,37 @@ class ::CompositingArray < ::Array
     end
 
     objects.each_with_index do |this_object, this_index|
-      objects[ this_index ] = post_set_hook( index + this_index, this_object, true )
+      unless @without_hooks
+        objects[ this_index ] = post_set_hook( index + this_index, this_object, true )
+      end
     end
-
+    
     @sub_composite_arrays.each do |this_sub_array|
       this_sub_array.instance_eval do
         update_as_sub_array_for_parent_insert( index, *objects )
       end
     end
-
+    
     return objects
 
   end
 
+  ##########################
+  #  insert_without_hooks  #
+  ##########################
+
+  def insert_without_hooks( index, *objects )
+
+    @without_hooks = true
+
+    insert( index, *objects )
+    
+    @without_hooks = false
+
+    return objects
+
+  end
+  
   ##########
   #  push  #
   ##########
@@ -290,6 +332,22 @@ class ::CompositingArray < ::Array
 
   end
   alias_method :<<, :push
+
+  ########################
+  #  push_without_hooks  #
+  ########################
+
+  def push_without_hooks( *objects )
+
+    @without_hooks = true
+
+    push( *objects )
+    
+    @without_hooks = false
+
+    return objects
+
+  end
 
   ############
   #  concat  #
@@ -306,6 +364,22 @@ class ::CompositingArray < ::Array
   end
   alias_method :+, :concat
 
+  ##########################
+  #  concat_without_hooks  #
+  ##########################
+
+  def concat_without_hooks( *arrays )
+
+    @without_hooks = true
+
+    concat( *arrays )
+    
+    @without_hooks = false
+
+    return arrays
+
+  end
+
   ############
   #  delete  #
   ############
@@ -317,6 +391,22 @@ class ::CompositingArray < ::Array
     if index = index( object )
       return_value = delete_at( index )
     end
+
+    return return_value
+
+  end
+
+  ##########################
+  #  delete_without_hooks  #
+  ##########################
+
+  def delete_without_hooks( object )
+
+    @without_hooks = true
+
+    return_value = delete( object )
+    
+    @without_hooks = false
 
     return return_value
 
@@ -341,6 +431,22 @@ class ::CompositingArray < ::Array
     unless indexes.empty?
       return_value = delete_at_indexes( *indexes )
     end
+
+    return return_value
+
+  end
+
+  ##################################
+  #  delete_objects_without_hooks  #
+  ##################################
+
+  def delete_objects_without_hooks( *objects )
+
+    @without_hooks = true
+
+    return_value = delete_objects( *objects )
+    
+    @without_hooks = false
 
     return return_value
 
@@ -388,6 +494,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  #############################
+  #  delete_at_without_hooks  #
+  #############################
+
+  def delete_at_without_hooks( index )
+
+    @without_hooks = true
+
+    object = delete_at( index )
+    
+    @without_hooks = false
+
+    return object
+    
+  end
+
   #######################
   #  delete_at_indexes  #
   #######################
@@ -406,6 +528,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  #####################################
+  #  delete_at_indexes_without_hooks  #
+  #####################################
+
+  def delete_at_indexes_without_hooks( *indexes )
+    
+    @without_hooks = true
+
+    objects = delete_at_indexes( *indexes )
+    
+    @without_hooks = false
+  
+    return objects
+    
+  end
+  
   ###############
   #  delete_if  #
   ###############
@@ -423,6 +561,22 @@ class ::CompositingArray < ::Array
     end
 
     delete_at_indexes( *indexes )
+
+    return self
+
+  end
+
+  #############################
+  #  delete_if_without_hooks  #
+  #############################
+
+  def delete_if_without_hooks( & block )
+
+    @without_hooks = true
+
+    delete_if( & block )
+    
+    @without_hooks = false
 
     return self
 
@@ -448,6 +602,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  ###########################
+  #  keep_if_without_hooks  #
+  ###########################
+
+  def keep_if_without_hooks( & block )
+
+    @without_hooks = true
+
+    keep_if( & block )
+    
+    @without_hooks = false
+
+    return self
+
+  end
+
   ##############
   #  compact!  #
   ##############
@@ -457,6 +627,22 @@ class ::CompositingArray < ::Array
     return keep_if do |object|
       object != nil
     end
+
+  end
+
+  ############################
+  #  compact_without_hooks!  #
+  ############################
+
+  def compact_without_hooks!
+
+    @without_hooks = true
+
+    compact!
+    
+    @without_hooks = false
+
+    return self
 
   end
 
@@ -484,6 +670,22 @@ class ::CompositingArray < ::Array
       end
       return_value = self
     end
+
+    return return_value
+
+  end
+
+  ############################
+  #  flatten_without_hooks!  #
+  ############################
+
+  def flatten_without_hooks!
+
+    @without_hooks = true
+
+    return_value = flatten!
+    
+    @without_hooks = false
 
     return return_value
 
@@ -517,6 +719,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  ###########################
+  #  reject_without_hooks!  #
+  ###########################
+
+  def reject_without_hooks!( & block )
+
+    @without_hooks = true
+
+    reject!( & block )
+    
+    @without_hooks = false
+
+    return return_value
+
+  end
+
   #############
   #  replace  #
   #############
@@ -535,6 +753,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  ###########################
+  #  replace_without_hooks  #
+  ###########################
+
+  def replace_without_hooks( other_array )
+    
+    @without_hooks = true
+
+    replace( other_array )
+    
+    @without_hooks = false
+    
+    return self
+    
+  end
+  
   ##############
   #  reverse!  #
   ##############
@@ -553,6 +787,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  ############################
+  #  reverse_without_hooks!  #
+  ############################
+
+  def reverse_without_hooks!
+
+    @without_hooks = true
+
+    reverse!
+    
+    @without_hooks = false
+
+    return self
+
+  end
+  
   #############
   #  rotate!  #
   #############
@@ -571,6 +821,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  ###########################
+  #  rotate_without_hooks!  #
+  ###########################
+
+  def rotate_without_hooks!( rotate_count = 1 )
+
+    @without_hooks = true
+
+    rotate!( rotate_count )
+    
+    @without_hooks = false
+
+    return self
+
+  end
+  
   #############
   #  select!  #
   #############
@@ -593,6 +859,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  ###########################
+  #  select_without_hooks!  #
+  ###########################
+
+  def select_without_hooks!( & block )
+  
+    @without_hooks = true
+
+    select!( & block )
+    
+    @without_hooks = false
+  
+    return self
+  
+  end
+  
   ##############
   #  shuffle!  #
   ##############
@@ -606,6 +888,22 @@ class ::CompositingArray < ::Array
     shuffled_array.each_with_index do |this_object, index|
       self[ index ] = this_object
     end
+
+    return self
+
+  end
+  
+  ############################
+  #  shuffle_without_hooks!  #
+  ############################
+
+  def shuffle_without_hooks!( random_number_generator = nil )
+
+    @without_hooks = true
+
+    shuffle!( random_number_generator )
+    
+    @without_hooks = false
 
     return self
 
@@ -630,6 +928,24 @@ class ::CompositingArray < ::Array
   end
   alias_method :map!, :collect!
 
+  ############################
+  #  collect_without_hooks!  #
+  #  map_without_hooks!      #
+  ############################
+
+  def collect_without_hooks!( & block )
+    
+    @without_hooks = true
+
+    collect!( & block )
+    
+    @without_hooks = false
+    
+    return self
+    
+  end
+  alias_method :map_without_hooks!, :collect_without_hooks!
+  
   ###########
   #  sort!  #
   ###########
@@ -648,6 +964,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  #########################
+  #  sort_without_hooks!  #
+  #########################
+
+  def sort_without_hooks!( & block )
+    
+    @without_hooks = true
+
+    sort!
+    
+    @without_hooks = false
+    
+    return self
+    
+  end
+  
   ##############
   #  sort_by!  #
   ##############
@@ -668,6 +1000,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  ############################
+  #  sort_by_without_hooks!  #
+  ############################
+
+  def sort_by_without_hooks!( & block )
+    
+    @without_hooks = true
+
+    sort_by!( & block )
+    
+    @without_hooks = false
+    
+    return self
+    
+  end
+  
   ###########
   #  uniq!  #
   ###########
@@ -690,6 +1038,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  #########################
+  #  uniq_without_hooks!  #
+  #########################
+
+  def uniq_without_hooks!
+
+    @without_hooks = true
+
+    return_value = uniq!
+    
+    @without_hooks = false
+
+    return return_value
+
+  end
+  
   #############
   #  unshift  #
   #############
@@ -698,8 +1062,26 @@ class ::CompositingArray < ::Array
 
     insert( 0, object )
 
+    return self
+
   end
 
+  ###########################
+  #  unshift_without_hooks  #
+  ###########################
+
+  def unshift_without_hooks( object )
+
+    @without_hooks = true
+
+    unshift( object )
+    
+    @without_hooks = false
+    
+    return self
+    
+  end
+  
   #########
   #  pop  #
   #########
@@ -712,6 +1094,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  #######################
+  #  pop_without_hooks  #
+  #######################
+
+  def pop_without_hooks
+
+    @without_hooks = true
+
+    object = pop
+    
+    @without_hooks = false
+
+    return object
+
+  end
+  
   ###########
   #  shift  #
   ###########
@@ -724,6 +1122,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  #########################
+  #  shift_without_hooks  #
+  #########################
+
+  def shift_without_hooks
+
+    @without_hooks = true
+
+    object = shift
+    
+    @without_hooks = false
+    
+    return object
+    
+  end
+  
   ############
   #  slice!  #
   ############
@@ -768,6 +1182,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  ##########################
+  #  slice_without_hooks!  #
+  ##########################
+
+  def slice_without_hooks!( index_start_or_range, length = nil )
+
+    @without_hooks = true
+
+    slice = slice!( index_start_or_range, length )
+    
+    @without_hooks = false
+    
+    return slice
+    
+  end
+  
   ###########
   #  clear  #
   ###########
@@ -786,6 +1216,22 @@ class ::CompositingArray < ::Array
 
   end
 
+  #########################
+  #  clear_without_hooks  #
+  #########################
+
+  def clear_without_hooks
+
+    @without_hooks = true
+
+    clear
+    
+    @without_hooks = false
+    
+    return self
+    
+  end
+  
   #############
   #  freeze!  #
   #############
@@ -814,11 +1260,19 @@ class ::CompositingArray < ::Array
     
     object = nil
     
-    if pre_delete_hook( index )
+    if @without_hooks
+      pre_delete_hook_result = true
+    else
+      pre_delete_hook_result = pre_delete_hook( index )
+    end
+    
+    if pre_delete_hook_result
     
       object = super_non_cascading_delete_at( index )
 
-      object = post_delete_hook( index, object )
+      unless @without_hooks
+        object = post_delete_hook( index, object )
+      end
 
     end
     
@@ -912,14 +1366,20 @@ class ::CompositingArray < ::Array
 
   def update_parent_element_in_self( corresponding_index, object )
 
-    object = pre_set_hook( corresponding_index, object, false )
+    unless @without_hooks
+      
+      object = pre_set_hook( corresponding_index, object, false )
     
-    object = child_pre_set_hook( corresponding_index, object, false )
+      object = child_pre_set_hook( corresponding_index, object, false )
+    
+    end
     
     non_cascading_set( corresponding_index, object )
 
-    child_post_set_hook( corresponding_index, object, false )
-
+    unless @without_hooks
+      child_post_set_hook( corresponding_index, object, false )
+    end
+    
   end
 
   ###########################################
@@ -972,8 +1432,10 @@ class ::CompositingArray < ::Array
 
     objects_to_insert = [ ]
     objects.each_with_index do |this_object, this_index|
-      this_object = pre_set_hook( corresponding_index + this_index, this_object, true )
-      this_object = child_pre_set_hook( corresponding_index + this_index, this_object, true )
+      unless @without_hooks
+        this_object = pre_set_hook( corresponding_index + this_index, this_object, true )
+        this_object = child_pre_set_hook( corresponding_index + this_index, this_object, true )
+      end
       # only keep objects the pre-set hook says to keep
       objects_to_insert.push( this_object )
     end
@@ -981,11 +1443,13 @@ class ::CompositingArray < ::Array
     
     non_cascading_insert( corresponding_index, *objects )
 
-    objects.each_with_index do |this_object, this_index|
-      post_set_hook( corresponding_index + this_index, this_object, true )
-      child_post_set_hook( corresponding_index + this_index, this_object, true )
+    unless @without_hooks
+      objects.each_with_index do |this_object, this_index|
+        post_set_hook( corresponding_index + this_index, this_object, true )
+        child_post_set_hook( corresponding_index + this_index, this_object, true )
+      end
     end
-
+    
   end
 
   ###########################################
@@ -996,14 +1460,22 @@ class ::CompositingArray < ::Array
 
     corresponding_index = @local_index_for_parent_index[ index ]
     
-    if child_pre_delete_hook( index )
+    if @without_hooks
+      child_pre_delete_hook_result = true
+    else
+      child_pre_delete_hook_result = child_pre_delete_hook( index )
+    end
+    
+    if child_pre_delete_hook_result
       object = non_cascading_delete_at( corresponding_index )
     end
     
     @parent_and_interpolated_object_count -= 1
 
-    child_post_delete_hook( index, object )
-
+    unless @without_hooks
+      child_post_delete_hook( index, object )
+    end
+    
     @sub_composite_arrays.each do |this_array|
       this_array.instance_eval do
         update_as_sub_array_for_parent_delete( corresponding_index )

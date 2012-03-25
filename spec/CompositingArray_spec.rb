@@ -192,7 +192,7 @@ describe ::CompositingArray do
     sub_cascading_composite_array.should == [ :B, :B, :C ]
 
   end
-  
+
   ############
   #  insert  #
   ############
@@ -223,7 +223,7 @@ describe ::CompositingArray do
     sub_cascading_composite_array.should == [ :E, nil, :B, :C, :F, nil, nil, :D ]
 
   end
-  
+
   ##########
   #  push  #
   #  <<    #
