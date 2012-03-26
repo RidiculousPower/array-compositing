@@ -215,9 +215,7 @@ class ::CompositingArray < ::Array
       object = pre_set_hook( index, object, false )
     end
     
-    unless @without_hooks
-      non_cascading_set( index, object )
-    end
+    non_cascading_set( index, object )
     
     if index_inside_parent_objects?( index )
       @replaced_parents[ index ] = true
