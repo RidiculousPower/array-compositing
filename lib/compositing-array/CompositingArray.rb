@@ -1,6 +1,8 @@
 
 class ::CompositingArray < ::Array
 
+  include ::CompositingObject
+
   attr_reader :parent_composite_array
 
   ################

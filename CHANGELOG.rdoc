@@ -20,3 +20,6 @@ Added _without_hook methods to perform actions without calling hooks.
 
 Fixed typo that broke set without hooks.
 
+== 5/27/12
+
+Added common CompositingObject support.
