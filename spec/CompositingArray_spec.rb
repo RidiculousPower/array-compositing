@@ -15,12 +15,12 @@ describe ::CompositingArray do
   
     cascading_composite_array = ::CompositingArray.new
 
-    cascading_composite_array.instance_variable_get( :@parent_composite_array ).should == nil
+    cascading_composite_array.instance_variable_get( :@parent_composite_object ).should == nil
     cascading_composite_array.should == [ ]
     cascading_composite_array.push( :A, :B, :C, :D )
     
     sub_cascading_composite_array = ::CompositingArray.new( cascading_composite_array )
-    sub_cascading_composite_array.instance_variable_get( :@parent_composite_array ).should == cascading_composite_array
+    sub_cascading_composite_array.instance_variable_get( :@parent_composite_object ).should == cascading_composite_array
     sub_cascading_composite_array.should == [ :A, :B, :C, :D ]
 
   end

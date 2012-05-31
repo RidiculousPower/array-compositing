@@ -3,7 +3,7 @@ class ::CompositingArray < ::Array
 
   include ::CompositingObject
 
-  attr_reader :parent_composite_array
+  alias_method :parent_composite_array, :parent_composite_object
 
   ################
   #  initialize  #
@@ -37,12 +37,12 @@ class ::CompositingArray < ::Array
 
   def initialize_for_parent( parent_composite_array )
 
-    if @parent_composite_array = parent_composite_array
+    if @parent_composite_object = parent_composite_array
 
       # initialize contents of self from parent contents
-      update_as_sub_array_for_parent_insert( 0, *@parent_composite_array )
+      update_as_sub_array_for_parent_insert( 0, *@parent_composite_object )
 
-      @parent_composite_array.register_sub_composite_array( self )
+      @parent_composite_object.register_sub_composite_array( self )
 
     end
     
@@ -1240,8 +1240,8 @@ class ::CompositingArray < ::Array
   def freeze!
 
     # unregister with parent composite so we don't get future updates from it
-    if @parent_composite_array
-      @parent_composite_array.unregister_sub_composite_array( self )
+    if @parent_composite_object
+      @parent_composite_object.unregister_sub_composite_array( self )
     end
 
     return self
