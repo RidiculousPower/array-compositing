@@ -9,8 +9,10 @@ class ::CompositingArray < ::Array
   #  initialize  #
   ################
 
-  def initialize( parent_composite_array = nil )
+  def initialize( parent_composite_array = nil, configuration_instance = nil )
 
+    super( configuration_instance )
+    
     # arrays that inherit from us
     @sub_composite_arrays = [ ]
 
