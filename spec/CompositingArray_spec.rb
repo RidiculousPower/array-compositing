@@ -1,9 +1,5 @@
 
-if $__compositing_array__spec__development
-  require_relative '../lib/compositing-array.rb'
-else
-  require 'compositing-array'
-end
+require_relative '../lib/compositing-array.rb'
 
 describe ::CompositingArray do
 

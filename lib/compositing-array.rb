@@ -1,9 +1,9 @@
 
-if $__compositing_array__spec__development
-  require_relative '../../compositing-object/lib/compositing-object.rb'
-else
-  require 'compositing-object'
+require 'hooked-array'
+
+class ::CompositingArray < ::HookedArray
 end
 
+require_relative 'compositing-array/CompositingArray/Interface.rb'
 require_relative 'compositing-array/CompositingArray.rb'
 
