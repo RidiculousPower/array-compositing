@@ -31,3 +31,8 @@ Added :parent_composite_object and changed :parent_composite_array to alias :par
 == 6/1/12
 
 Added :configuration_instance parameter to :initialize.
+
+== 6/15/12
+
+Moved hooks out to hooked-array and utilized hooked-array as foundation.
+Fixed dependency in gemspec.
