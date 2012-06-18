@@ -156,22 +156,26 @@ module ::CompositingArray::Interface
 
   def insert( index, *objects )
     
-    super_objects = super
-    
-    # super might have inserted nils at the start if insert was after end of array
-    index -= super_objects.count - objects.count
-    objects = super_objects
-    
-    if index_inside_parent_objects?( index )
-      update_corresponding_index_for_local_change( index, objects.count )
-    end
+    unless objects.empty?
+      
+      if inserted_objects = super
 
-    @sub_composite_arrays.each do |this_sub_array|
-      this_sub_array.instance_eval do
-        update_as_sub_array_for_parent_insert( index, *objects )
+        objects = inserted_objects
+    
+        if index_inside_parent_objects?( index )
+          update_corresponding_index_for_local_change( index, objects.count )
+        end
+
+        @sub_composite_arrays.each do |this_sub_array|
+          this_sub_array.instance_eval do
+            update_as_sub_array_for_parent_insert( index, *objects )
+          end
+        end
+
       end
+      
     end
-
+    
     return objects
 
   end

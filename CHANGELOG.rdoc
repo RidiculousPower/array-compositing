@@ -36,3 +36,7 @@ Added :configuration_instance parameter to :initialize.
 
 Moved hooks out to hooked-array and utilized hooked-array as foundation.
 Fixed dependency in gemspec.
+
+== 6/18/12
+
+Fixed index miscount.
