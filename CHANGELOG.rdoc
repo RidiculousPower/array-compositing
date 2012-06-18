@@ -40,3 +40,4 @@ Fixed dependency in gemspec.
 == 6/18/12
 
 Fixed index miscount.
+Fixed index miscount fix for proper count.

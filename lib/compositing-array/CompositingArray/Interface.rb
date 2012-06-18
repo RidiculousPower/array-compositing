@@ -159,7 +159,14 @@ module ::CompositingArray::Interface
     unless objects.empty?
       
       if inserted_objects = super
-
+        
+        # super may insert more (nil generally) or remove some (ie for duplicates)
+        count_changed = objects.count - inserted_objects.count
+        
+        if count_changed < 0
+          index += count_changed
+        end
+        
         objects = inserted_objects
     
         if index_inside_parent_objects?( index )
