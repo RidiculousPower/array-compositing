@@ -1,10 +1,10 @@
 # Compositing Array #
 
-http://rubygems.org/gems/compositing-array
+http://rubygems.org/gems/array-compositing
 
 # Description #
 
-Provides CompositingArray.
+Provides Array::Compositing.
 
 # Summary #
 
@@ -12,13 +12,13 @@ An implementation of Array that permits chaining, where children inherit changes
 
 # Install #
 
-* sudo gem install compositing-array
+* sudo gem install array-compositing
 
 # Usage #
 
 ```ruby
-compositing_array = CompositingArray.new
-sub_compositing_array = CompositingArray.new( compositing_array )
+compositing_array = Array::Compositing.new
+sub_compositing_array = Array::Compositing.new( compositing_array )
 
 compositing_array.push( :some_value )
 # compositing_array
