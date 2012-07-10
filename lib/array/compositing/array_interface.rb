@@ -6,6 +6,28 @@ module ::Array::Compositing::ArrayInterface
   instances_identify_as!( ::Array::Compositing )
 
   ParentIndexStruct = ::Struct.new( :local_index, :replaced )
+
+  extend ::Module::Cluster
+  
+  cluster( :compositing_array_interface ).before_include.cascade_to( :class ) do |hooked_instance|
+    
+    hooked_instance.class_eval do
+      
+      unless method_defined?( :non_cascading_set )
+        alias_method :non_cascading_set, :[]=
+      end
+
+      unless method_defined?( :non_cascading_insert )
+        alias_method :non_cascading_insert, :insert
+      end
+
+      unless method_defined?( :non_cascading_delete_at )
+        alias_method :non_cascading_delete_at, :delete_at
+      end
+      
+    end
+    
+  end
   
   ################
   #  initialize  #
@@ -261,9 +283,9 @@ module ::Array::Compositing::ArrayInterface
   ################################################
   #  perform_single_object_insert_between_hooks  #
   ################################################
-  puts 'blah'
+  
   def perform_single_object_insert_between_hooks( local_index, object )
-puts 'here: ' + object.to_s
+
     if local_index = super
 
       @parent_index_map.local_insert( local_index, 1 )

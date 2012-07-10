@@ -10,12 +10,6 @@ require_relative './requires.rb'
 
 class ::Array::Compositing < ::Array::Hooked
 
-  alias_method :non_cascading_set, :[]=
-
-  alias_method :non_cascading_insert, :insert
-
-  alias_method :non_cascading_delete_at, :delete_at
-
   include ::Array::Compositing::ArrayInterface
   
 end
