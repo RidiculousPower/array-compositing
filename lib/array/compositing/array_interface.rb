@@ -261,9 +261,9 @@ module ::Array::Compositing::ArrayInterface
   ################################################
   #  perform_single_object_insert_between_hooks  #
   ################################################
-
+  puts 'blah'
   def perform_single_object_insert_between_hooks( local_index, object )
-
+puts 'here: ' + object.to_s
     if local_index = super
 
       @parent_index_map.local_insert( local_index, 1 )
