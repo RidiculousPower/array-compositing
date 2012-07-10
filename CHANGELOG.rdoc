@@ -41,3 +41,11 @@ Fixed dependency in gemspec.
 
 Fixed index miscount.
 Fixed index miscount fix for proper count.
+
+== 7/9/2012
+
+Removed module-cluster dependency.
+
+== 7/10/2012
+
+Reverted module-cluster dependency.
