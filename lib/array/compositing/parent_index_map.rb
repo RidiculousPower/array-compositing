@@ -191,6 +191,10 @@ class ::Array::Compositing::ParentIndexMap
         end
     end
     
+    if local_insert_index < 0
+      local_insert_index = 0
+    end
+    
     # Insert new parent index correspondences.
     object_count.times do |this_time|
       this_parent_index = parent_insert_index + this_time
@@ -221,7 +225,7 @@ class ::Array::Compositing::ParentIndexMap
     
     # Update count of parent + interpolated objects since we inserted inside the collection.
     @parent_and_interpolated_object_count += object_count
-    
+
     return local_insert_index
     
   end

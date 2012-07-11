@@ -287,7 +287,7 @@ module ::Array::Compositing::ArrayInterface
   def perform_single_object_insert_between_hooks( local_index, object )
 
     if local_index = super
-
+      
       @parent_index_map.local_insert( local_index, 1 )
     
       @sub_composite_arrays.each do |this_sub_array|
@@ -376,18 +376,14 @@ module ::Array::Compositing::ArrayInterface
 
   def update_for_parent_insert( parent_insert_index, object )
 
-    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_insert_index )
+    local_index = @parent_index_map.parent_insert( parent_insert_index, 1 )
 
-      local_index = @parent_index_map.parent_insert( parent_insert_index, 1 )
+    undecorated_insert( local_index, nil )
 
-      undecorated_insert( local_index, nil )
-
-      @sub_composite_arrays.each do |this_array|
-        this_array.instance_eval do
-          update_for_parent_insert( local_index, object )
-        end
+    @sub_composite_arrays.each do |this_array|
+      this_array.instance_eval do
+        update_for_parent_insert( local_index, object )
       end
-
     end
     
   end
