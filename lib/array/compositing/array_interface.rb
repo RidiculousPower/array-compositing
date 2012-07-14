@@ -174,6 +174,18 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
+  ##############
+  #  include?  #
+  ##############
+
+  def include?( object )
+
+    load_parent_state
+
+    return super
+    
+  end
+    
   ##########
   #  to_s  #
   ##########
@@ -333,7 +345,7 @@ module ::Array::Compositing::ArrayInterface
     # We call hooks manually so that we can do a direct undecorated set.
     # This is because we already have an object we loaded as a place-holder that we are now updating.
     # So we don't want to sort/test uniqueness/etc. We just want to insert at the actual index.
-    
+
     unless @without_child_hooks
       object = child_pre_set_hook( local_index, object, false )    
     end
@@ -353,7 +365,7 @@ module ::Array::Compositing::ArrayInterface
     unless @without_child_hooks
       child_post_set_hook( local_index, object, false )
     end
-    
+
     return object
     
   end
