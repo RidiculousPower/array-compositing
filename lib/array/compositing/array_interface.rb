@@ -163,6 +163,18 @@ module ::Array::Compositing::ArrayInterface
   end
 
   ##########
+  #  each  #
+  ##########
+  
+  def each( *args, & block )
+
+    load_parent_state
+
+    super
+    
+  end
+
+  ##########
   #  to_s  #
   ##########
   
