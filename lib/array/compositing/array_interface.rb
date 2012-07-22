@@ -170,7 +170,7 @@ module ::Array::Compositing::ArrayInterface
 
     load_parent_state
    
-    super
+    return super
     
   end
 
@@ -180,13 +180,9 @@ module ::Array::Compositing::ArrayInterface
   
   def each( *args, & block )
 
-    return to_enum unless block_given?
-
-    for index in 0...count
-      block.call( self[ index ] )
-    end
-    
-    return self
+    load_parent_state
+   
+    return super
     
   end
 

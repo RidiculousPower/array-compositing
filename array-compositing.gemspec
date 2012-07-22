@@ -5,7 +5,7 @@ Gem::Specification.new do |spec|
 
   spec.name                      =  'array-compositing'
   spec.rubyforge_project         =  'array-compositing'
-  spec.version                   =  '1.0.7'
+  spec.version                   =  '1.0.8'
 
   spec.summary                   =  "Provides Array::Compositing."
   spec.description               =  "An implementation of Array that permits chaining, where children inherit changes to parent and where parent settings can be overridden in children."
