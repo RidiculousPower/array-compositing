@@ -18,7 +18,7 @@ describe ::Array::Compositing do
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
     sub_cascading_composite_array.instance_variable_get( :@parent_composite_object ).should == cascading_composite_array
     sub_cascading_composite_array.should == [ :A, :B, :C, :D ]
-
+    
   end
 
   ##################################################################################################

@@ -40,8 +40,6 @@ module ::Array::Compositing::ArrayInterface
     # arrays that inherit from us
     @sub_composite_arrays = [ ]
 
-    @parent_index_map = ::Array::Compositing::ParentIndexMap.new
-
     initialize_for_parent( parent_composite_array )
 
   end
@@ -55,6 +53,8 @@ module ::Array::Compositing::ArrayInterface
   def initialize_for_parent( parent_composite_array )
 
     if @parent_composite_object = parent_composite_array
+
+      @parent_index_map = ::Array::Compositing::ParentIndexMap.new
 
       @parent_composite_object.register_sub_composite_array( self )
       
@@ -157,44 +157,8 @@ module ::Array::Compositing::ArrayInterface
   def ==( object )
     
     load_parent_state
-    
-    super
-    
-  end
-
-  ##########
-  #  each  #
-  ##########
-  
-  def each( *args, & block )
-
-    load_parent_state
-
-    super
-    
-  end
-
-  ##############
-  #  include?  #
-  ##############
-
-  def include?( object )
-
-    load_parent_state
 
     return super
-    
-  end
-    
-  ##########
-  #  to_s  #
-  ##########
-  
-  def to_s
-   
-    #load_parent_state
-   
-    super
     
   end
 
@@ -210,6 +174,41 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
+  ##########
+  #  each  #
+  ##########
+  
+  def each( *args, & block )
+
+    return to_enum unless block_given?
+
+    for index in 0...count
+      block.call( self[ index ] )
+    end
+    
+    return self
+    
+  end
+
+  ##############
+  #  include?  #
+  ##############
+
+  def include?( object )
+
+    includes = false
+    
+    each do |this_member|
+      if this_member == object
+        includes = true 
+        break
+      end
+    end
+
+    return includes
+    
+  end
+
   ########
   #  []  #
   ########
@@ -218,7 +217,7 @@ module ::Array::Compositing::ArrayInterface
 
     return_value = nil
 
-    if @parent_index_map.requires_lookup?( local_index )
+    if @parent_index_map and @parent_index_map.requires_lookup?( local_index )
       return_value = lazy_set_parent_element_in_self( local_index )
     else
       return_value = super
@@ -233,9 +232,9 @@ module ::Array::Compositing::ArrayInterface
   #########
 
   def []=( local_index, object )
-
-    super
     
+    super
+
     @sub_composite_arrays.each do |this_sub_array|
       this_sub_array.instance_eval do
         update_for_parent_set( local_index, object )
@@ -253,9 +252,11 @@ module ::Array::Compositing::ArrayInterface
   ###############
 
   def delete_at( local_index )
-
-    @parent_index_map.local_delete_at( local_index )
-
+    
+    if @parent_index_map
+      @parent_index_map.local_delete_at( local_index )
+    end
+    
     deleted_object = non_cascading_delete_at( local_index )
 
     @sub_composite_arrays.each do |this_sub_array|
@@ -296,27 +297,30 @@ module ::Array::Compositing::ArrayInterface
     
     did_set = false
     
-    if did_set = super
+    if did_set = super and @parent_index_map
       @parent_index_map.local_set( local_index )
+    else
     end
     
     return did_set
     
   end
-
+  
   ################################################
   #  perform_single_object_insert_between_hooks  #
   ################################################
   
-  def perform_single_object_insert_between_hooks( local_index, object )
+  def perform_single_object_insert_between_hooks( requested_local_index, object )
 
     if local_index = super
       
-      @parent_index_map.local_insert( local_index, 1 )
-    
+      if @parent_index_map
+        @parent_index_map.local_insert( local_index, 1 )
+      end
+      
       @sub_composite_arrays.each do |this_sub_array|
         this_sub_array.instance_eval do
-          update_for_parent_insert( local_index, object )
+          update_for_parent_insert( requested_local_index, local_index, object )
         end
       end
     
@@ -334,38 +338,46 @@ module ::Array::Compositing::ArrayInterface
     
     object = nil
     
-    case optional_object.count
-      when 0
-        parent_index = @parent_index_map.parent_index( local_index )
-        object = @parent_composite_object[ parent_index ]
-      when 1
-        object = optional_object[ 0 ]
-    end
+    if @parent_index_map.requires_lookup?( local_index )
+          
+      case optional_object.count
+        when 0
+          parent_index = @parent_index_map.parent_index( local_index )
+          object = @parent_composite_object[ parent_index ]
+        when 1
+          object = optional_object[ 0 ]
+      end
         
-    # We call hooks manually so that we can do a direct undecorated set.
-    # This is because we already have an object we loaded as a place-holder that we are now updating.
-    # So we don't want to sort/test uniqueness/etc. We just want to insert at the actual index.
+      # We call hooks manually so that we can do a direct undecorated set.
+      # This is because we already have an object we loaded as a place-holder that we are now updating.
+      # So we don't want to sort/test uniqueness/etc. We just want to insert at the actual index.
 
-    unless @without_child_hooks
-      object = child_pre_set_hook( local_index, object, false )    
+      unless @without_child_hooks
+        object = child_pre_set_hook( local_index, object, false )    
+      end
+    
+      unless @without_hooks
+        object = pre_set_hook( local_index, object, false )    
+      end
+    
+      undecorated_set( local_index, object )
+
+      @parent_index_map.looked_up!( local_index )
+
+      unless @without_hooks
+        post_set_hook( local_index, object, false )
+      end
+
+      unless @without_child_hooks
+        child_post_set_hook( local_index, object, false )
+      end
+
+    else
+      
+      object = undecorated_get( local_index )
+      
     end
     
-    unless @without_hooks
-      object = pre_set_hook( local_index, object, false )    
-    end
-    
-    undecorated_set( local_index, object )
-
-    @parent_index_map.looked_up!( local_index )
-
-    unless @without_hooks
-      post_set_hook( local_index, object, false )
-    end
-
-    unless @without_child_hooks
-      child_post_set_hook( local_index, object, false )
-    end
-
     return object
     
   end
@@ -379,6 +391,8 @@ module ::Array::Compositing::ArrayInterface
     unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_index )
 
       local_index = @parent_index_map.parent_set( parent_index )
+    
+      undecorated_set( local_index, nil )
     
       if @parent_index_map.requires_lookup?( local_index )
 
@@ -398,15 +412,15 @@ module ::Array::Compositing::ArrayInterface
   #  update_for_parent_insert  #
   ##############################
 
-  def update_for_parent_insert( parent_insert_index, object )
+  def update_for_parent_insert( requested_parent_index, parent_index, object )
 
-    local_index = @parent_index_map.parent_insert( parent_insert_index, 1 )
+    local_index = @parent_index_map.parent_insert( parent_index, 1 )
 
     undecorated_insert( local_index, nil )
 
     @sub_composite_arrays.each do |this_array|
       this_array.instance_eval do
-        update_for_parent_insert( local_index, object )
+        update_for_parent_insert( local_index, local_index, object )
       end
     end
     
@@ -497,8 +511,10 @@ module ::Array::Compositing::ArrayInterface
   def load_parent_state
 
     # if is used for case where duplicate is created (like :uniq) and initialization not called during dupe process
-    @parent_index_map.indexes_requiring_lookup.each do |this_local_index|
-      lazy_set_parent_element_in_self( this_local_index )
+    if @parent_index_map
+      @parent_index_map.indexes_requiring_lookup.each do |this_local_index|
+        lazy_set_parent_element_in_self( this_local_index )
+      end
     end
     
   end
