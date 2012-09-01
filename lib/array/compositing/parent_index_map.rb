@@ -38,14 +38,20 @@ class ::Array::Compositing::ParentIndexMap
     @local_index_requires_lookup = [ ]
     
   end
+  
+  ###########################################
+  #  first_index_after_last_parent_element  #
+  ###########################################
 
+  attr_reader :first_index_after_last_parent_element
+  
   #####################################
   #  register_parent_composite_array  #
   #####################################
 
   def register_parent_composite_array( parent_composite_array )
     
-    @parent_local_maps[ parent_composite_array ] = [ ]
+    @parent_local_maps[ parent_composite_array.__id__ ] = [ ]
     
   end
 
@@ -55,7 +61,7 @@ class ::Array::Compositing::ParentIndexMap
 
   def unregister_parent_composite_array( parent_composite_array )
     
-    @parent_local_maps.delete( parent_composite_array )
+    @parent_local_maps.delete( parent_composite_array.__id__ )
     
   end
   
@@ -163,8 +169,9 @@ class ::Array::Compositing::ParentIndexMap
   #
   #           Index in local array instance.
   #
-  #   @return [false,Array::Compositing] False if no lookup is required, 
-  #                                      parent array instance if lookup is required.
+  #   @return [true,false]
+  #
+  #           Whether lookup is required.
   #
   def requires_lookup?( local_index )
     
@@ -181,7 +188,9 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # List of indexes requiring lookup in a parent instance.
   # 
-  # @return [Array<Fixnum>] list of indexes requiring lookup in a parent instance.
+  # @return [Array<Fixnum>]
+  #
+  #         list of indexes requiring lookup in a parent instance.
   #
   def indexes_requiring_lookup
     
@@ -585,7 +594,7 @@ class ::Array::Compositing::ParentIndexMap
   #
   def parent_local_map( parent_instance )
     
-    return @parent_local_maps[ parent_instance ]
+    return @parent_local_maps[ parent_instance.__id__ ]
     
   end
 
