@@ -28,7 +28,7 @@ module ::Array::Compositing::ArrayInterface
     end
     
   end
-  
+    
   ################
   #  initialize  #
   ################
@@ -37,41 +37,70 @@ module ::Array::Compositing::ArrayInterface
 
     super( configuration_instance, *args )
     
+    @parent_index_map = ::Array::Compositing::ParentIndexMap.new
+    
     # arrays from which we inherit
     @parent_composite_objects = [ ]
     
     # arrays that inherit from us
-    @child_composite_arrays = [ ]
+    @child_composite_objects = [ ]
 
-    initialize_for_parent( parent_composite_array )
-
+    if parent_composite_array
+      register_parent_composite_array( parent_composite_array )
+    end
+    
   end
 
   ###################################  Sub-Array Management  #######################################
 
-  ###########################
-  #  initialize_for_parent  #
-  ###########################
+  #####################################
+  #  register_parent_composite_array  #
+  #####################################
 
-  def initialize_for_parent( parent_composite_array )
+  def register_parent_composite_array( parent_composite_array )
+    
+    @parent_composite_objects.push( parent_composite_array )
 
-    if @parent_composite_object = parent_composite_array
+    @parent_index_map.register_parent_composite_array( parent_composite_array )
+    
+    parent_composite_array.register_child_composite_array( self )
+    
+    # where do we insert new parents?
+    # * beginning of self
+    # * end of existing parent elements in self
+    # * end of self
+    # we choose #2 for now - this could be made an option later.
+    insert_at_index = @parent_index_map.first_index_after_last_parent_element
 
-      @parent_index_map = ::Array::Compositing::ParentIndexMap.new
+    inheriting_element_count = parent_composite_array.count
 
-      @parent_composite_object.register_child_composite_array( self )
-      
-      # record in our parent index map that parent has elements that have been inserted      
-      parent_element_count = @parent_composite_object.count
-      @parent_index_map.parent_insert( 0, parent_element_count )
-      
-      # initialize contents of self from parent contents
-      parent_element_count.times do |this_time|
-        # placeholders so we don't have to stub :count, etc.
-        undecorated_insert( 0, nil )
-      end
-      
-    end
+    # record in our parent index map that parent has elements that have been inserted      
+    @parent_index_map.parent_insert( parent_composite_array, insert_at_index, inheriting_element_count )
+    
+    # placeholders so we don't have to stub :count, etc.
+    inheriting_element_count.times do |this_time|
+      undecorated_insert( insert_at_index, nil )
+    end    
+    
+  end
+  
+  #######################################
+  #  unregister_parent_composite_array  #
+  #######################################
+
+  def unregister_parent_composite_array( parent_composite_array )
+    
+    
+    
+  end
+  
+  ####################
+  #  replace_parent  #
+  ####################
+  
+  def replace_parent( existing_parent_composite_array, replacement_parent_composite_array )
+    
+    
     
   end
   
@@ -84,25 +113,25 @@ module ::Array::Compositing::ArrayInterface
 
   alias_method :parent_composite_array, :parent_composite_object
 
-  ##################################
+  ####################################
   #  register_child_composite_array  #
-  ##################################
+  ####################################
 
   def register_child_composite_array( child_composite_array )
 
-    @child_composite_arrays.push( child_composite_array )
+    @child_composite_objects.push( child_composite_array )
 
     return self
 
   end
 
-  ####################################
+  ######################################
   #  unregister_child_composite_array  #
-  ####################################
+  ######################################
 
   def unregister_child_composite_array( child_composite_array )
 
-    @child_composite_arrays.delete( child_composite_array )
+    @child_composite_objects.delete( child_composite_array )
 
     return self
 
@@ -198,7 +227,7 @@ module ::Array::Compositing::ArrayInterface
     includes = false
     
     each do |this_member|
-      if this_member == object
+      if this_member.equal?( object ) or this_member == object
         includes = true 
         break
       end
@@ -234,9 +263,9 @@ module ::Array::Compositing::ArrayInterface
     
     super
 
-    @child_composite_arrays.each do |this_sub_array|
+    @child_composite_objects.each do |this_sub_array|
       this_sub_array.instance_eval do
-        update_for_parent_set( local_index, object )
+        update_for_parent_set( self, local_index, object )
       end
     end
 
@@ -258,9 +287,9 @@ module ::Array::Compositing::ArrayInterface
     
     deleted_object = non_cascading_delete_at( local_index )
 
-    @child_composite_arrays.each do |this_sub_array|
+    @child_composite_objects.each do |this_sub_array|
       this_sub_array.instance_eval do
-        update_for_parent_delete_at( local_index, deleted_object )
+        update_for_parent_delete_at( self, local_index, deleted_object )
       end
     end
 
@@ -276,8 +305,8 @@ module ::Array::Compositing::ArrayInterface
   def freeze!
 
     # unregister with parent composite so we don't get future updates from it
-    if @parent_composite_object
-      @parent_composite_object.unregister_child_composite_array( self )
+    @parent_composite_objects.each do |this_parent_composite_array|
+      this_parent_composite_array.unregister_child_composite_array( self )
     end
 
     return self
@@ -317,9 +346,9 @@ module ::Array::Compositing::ArrayInterface
         @parent_index_map.local_insert( local_index, 1 )
       end
       
-      @child_composite_arrays.each do |this_sub_array|
+      @child_composite_objects.each do |this_sub_array|
         this_sub_array.instance_eval do
-          update_for_parent_insert( requested_local_index, local_index, object )
+          update_for_parent_insert( self, requested_local_index, local_index, object )
         end
       end
     
@@ -337,12 +366,12 @@ module ::Array::Compositing::ArrayInterface
 
     object = nil
     
-    if @parent_index_map.requires_lookup?( local_index )
+    if parent_array_instance = @parent_index_map.requires_lookup?( local_index )
           
       case optional_object.count
         when 0
           parent_index = @parent_index_map.parent_index( local_index )
-          object = @parent_composite_object[ parent_index ]
+          object = parent_array_instance[ parent_index ]
         when 1
           object = optional_object[ 0 ]
       end
@@ -385,17 +414,17 @@ module ::Array::Compositing::ArrayInterface
   #  update_for_parent_set  #
   ###########################
 
-  def update_for_parent_set( parent_index, object )
+  def update_for_parent_set( parent_instance, parent_index, object )
 
-    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_index )
+    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_instance, parent_index )
 
-      local_index = @parent_index_map.parent_set( parent_index )
+      local_index = @parent_index_map.parent_set( parent_instance, parent_index )
     
       undecorated_set( local_index, nil )
     
       if @parent_index_map.requires_lookup?( local_index )
 
-        @child_composite_arrays.each do |this_array|
+        @child_composite_objects.each do |this_array|
           this_array.instance_eval do
             update_for_parent_set( local_index, object )
           end
@@ -411,15 +440,15 @@ module ::Array::Compositing::ArrayInterface
   #  update_for_parent_insert  #
   ##############################
 
-  def update_for_parent_insert( requested_parent_index, parent_index, object )
+  def update_for_parent_insert( parent_instance, requested_parent_index, parent_index, object )
 
-    local_index = @parent_index_map.parent_insert( parent_index, 1 )
+    local_index = @parent_index_map.parent_insert( parent_instance, parent_index, 1 )
 
     undecorated_insert( local_index, nil )
 
-    @child_composite_arrays.each do |this_array|
+    @child_composite_objects.each do |this_array|
       this_array.instance_eval do
-        update_for_parent_insert( local_index, local_index, object )
+        update_for_parent_insert( self, local_index, local_index, object )
       end
     end
     
@@ -429,13 +458,13 @@ module ::Array::Compositing::ArrayInterface
   #  update_for_parent_delete_at  #
   #################################
 
-  def update_for_parent_delete_at( parent_index, object )
+  def update_for_parent_delete_at( parent_instance, parent_index, object )
 
     did_delete = false
 
-    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_index )
+    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_instance, parent_index )
       
-      local_index = @parent_index_map.local_index( parent_index )
+      local_index = @parent_index_map.local_index( parent_instance, parent_index )
       
       if @without_child_hooks
         child_pre_delete_hook_result = true
@@ -445,7 +474,7 @@ module ::Array::Compositing::ArrayInterface
     
       if child_pre_delete_hook_result
 
-        @parent_index_map.parent_delete_at( parent_index )
+        @parent_index_map.parent_delete_at( parent_instance, parent_index )
 
         # I'm unclear why if we call perform_delete_between_hooks (including through non_cascading_delete_at)
         # we end up smashing the last index's lazy lookup value, turning it false
@@ -471,9 +500,9 @@ module ::Array::Compositing::ArrayInterface
             child_post_delete_hook( local_index, object )
           end
 
-          @child_composite_arrays.each do |this_array|
+          @child_composite_objects.each do |this_array|
             this_array.instance_eval do
-              update_for_parent_delete_at( local_index, object )
+              update_for_parent_delete_at( self, local_index, object )
             end
           end
 
