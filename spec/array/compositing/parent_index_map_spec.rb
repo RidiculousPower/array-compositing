@@ -3,6 +3,26 @@ require_relative '../../../lib/array-compositing.rb'
 
 describe ::Array::Compositing::ParentIndexMap do
 
+  #####################
+  #  register_parent  #
+  #####################
+
+  it 'can register parents' do
+    module ::Array::Compositing::ParentIndexMap::RegisterParentMock
+      ::Array::Compositing::ParentIndexMap.new.instance_eval do
+        parent_instance = ::Array.new
+        register_parent( parent_instance )
+        @parent_local_maps[ parent_instance.__id__ ].is_a?( ::Array ).should == true
+        parent_instance2 = ::Array.new
+        register_parent( parent_instance2 )
+        @parent_local_maps[ parent_instance2.__id__ ].is_a?( ::Array ).should == true
+        parent_instance3 = ::Array.new
+        register_parent( parent_instance3 )
+        @parent_local_maps[ parent_instance3.__id__ ].is_a?( ::Array ).should == true
+      end
+    end
+  end
+
   ######################
   #  index_for_offset  #
   ######################
@@ -53,9 +73,9 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ParentIndexMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         # mock the parent-local arrays
-        @parent_local_maps[ parent_instance_mock ] = [ 0, 1, 2, 3, 4 ]
+        @parent_local_maps[ parent_instance_mock.__id__ ] = [ 0, 1, 2, 3, 4 ]
         @local_parent_map = [ 0, 1, 2, 3, 4 ]
         parent_index( 0 ).should == 0
         local_index( parent_instance_mock, 4 ).should == 4
@@ -71,7 +91,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ReplacedParentElementWithParentIndexMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         replaced_parent_element_with_parent_index?( parent_instance_mock, 0 ).should == false
         replaced_parent_element_with_parent_index?( parent_instance_mock, 1 ).should == false
@@ -91,7 +111,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ReplacedParentElementWithLocalIndexMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         replaced_parent_element_with_local_index?( 0 ).should == false
         replaced_parent_element_with_local_index?( 1 ).should == false
@@ -111,7 +131,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ParentInsertMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         parent_index_struct = parent_index( 0 )
         parent_index_struct.parent_index.should == 0
@@ -131,7 +151,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ParentInsertMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         local_insert( 0, 2 )
         parent_index( 0 ).should == nil
         local_index( parent_instance_mock, 0 ).should == nil
@@ -164,7 +184,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalInsertMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         local_insert( 0, 2 )
         parent_index( 0 ).should == nil
         local_index( parent_instance_mock, 0 ).should == nil
@@ -178,7 +198,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalInsertMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_insert( 0, 2 )
         parent_index( 0 ).should == nil
@@ -209,7 +229,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalInsertMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_insert( 2, 2 )
         parent_index_struct = parent_index( 0 )
@@ -244,7 +264,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ParentSetMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_insert( 2, 2 )
         parent_set( parent_instance_mock, 2 )
@@ -278,7 +298,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ParentSetMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_insert( 2, 2 )
         parent_set( parent_instance_mock, 1 )
@@ -308,7 +328,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ParentSetMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_insert( 2, 2 )
         local_set( 1 )
@@ -341,7 +361,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalSetMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         local_set( 0 )
         parent_index( 0 ).should == nil
         local_index( parent_instance_mock, 0 ).should == nil
@@ -354,7 +374,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalSetMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_set( 0 )
         parent_index( 0 ).should == nil
@@ -375,7 +395,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalSetMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_set( 2 )
         parent_index_struct = parent_index( 0 )
@@ -406,7 +426,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ParentNoChildDeleteAtMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         parent_delete_at( parent_instance_mock, 1 )
         parent_index_struct = parent_index( 0 )
@@ -425,7 +445,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::ParentReplacedChildDeleteAtMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_set( 1 )
         parent_delete_at( parent_instance_mock, 1 )
@@ -452,7 +472,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalDeleteAtMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_delete_at( 1 )
         parent_index_struct = parent_index( 0 )
@@ -473,7 +493,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalDeleteAtMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_insert( 1, 1 )
         local_delete_at( 1 )
@@ -499,7 +519,7 @@ describe ::Array::Compositing::ParentIndexMap do
     module ::Array::Compositing::ParentIndexMap::LocalDeleteAtMock
       parent_instance_mock = Object.new
       ::Array::Compositing::ParentIndexMap.new.instance_eval do
-        register_parent_composite_array( parent_instance_mock )
+        register_parent( parent_instance_mock )
         parent_insert( parent_instance_mock, 0, 2 )
         local_insert( 2, 2 )
         local_delete_at( 3 )
@@ -519,6 +539,83 @@ describe ::Array::Compositing::ParentIndexMap do
         looked_up!( 1 )
         requires_lookup?( 0 ).should == false
         requires_lookup?( 1 ).should == false
+      end
+    end
+  end
+
+  #######################
+  #  unregister_parent  #
+  #######################
+
+  it 'can unregister parents' do
+    module ::Array::Compositing::ParentIndexMap::UnregisterParentMock
+      ::Array::Compositing::ParentIndexMap.new.instance_eval do
+
+        # parent 1 insert - 3 elements
+        parent_instance = ::Array.new
+        register_parent( parent_instance )
+        parent_insert( parent_instance, 0, 3 )
+
+        # parent 2 insert - 2 elements
+        parent_instance2 = ::Array.new
+        register_parent( parent_instance2 )
+        parent_insert( parent_instance2, 0, 2 )
+
+        # parent 3 insert - 4 elements
+        parent_instance3 = ::Array.new
+        register_parent( parent_instance3 )
+        parent_insert( parent_instance3, 0, 4 )
+
+        # parent 4 insert - 1 element
+        parent_instance4 = ::Array.new
+        register_parent( parent_instance4 )
+        parent_insert( parent_instance4, 0, 1 )
+        
+        @local_parent_map[ 0 ].parent_instance.should == parent_instance
+        @local_parent_map[ 0 ].parent_index.should == 0
+        @local_parent_map[ 1 ].parent_instance.should == parent_instance
+        @local_parent_map[ 1 ].parent_index.should == 1
+        @local_parent_map[ 2 ].parent_instance.should == parent_instance
+        @local_parent_map[ 2 ].parent_index.should == 2
+
+        @local_parent_map[ 3 ].parent_instance.should == parent_instance2
+        @local_parent_map[ 3 ].parent_index.should == 0
+        @local_parent_map[ 4 ].parent_instance.should == parent_instance2
+        @local_parent_map[ 4 ].parent_index.should == 1
+        
+        @local_parent_map[ 5 ].parent_instance.should == parent_instance3
+        @local_parent_map[ 5 ].parent_index.should == 0
+        @local_parent_map[ 6 ].parent_instance.should == parent_instance3
+        @local_parent_map[ 6 ].parent_index.should == 1
+        @local_parent_map[ 7 ].parent_instance.should == parent_instance3
+        @local_parent_map[ 7 ].parent_index.should == 2
+        @local_parent_map[ 8 ].parent_instance.should == parent_instance3
+        @local_parent_map[ 8 ].parent_index.should == 3
+
+        @local_parent_map[ 9 ].parent_instance.should == parent_instance4
+        @local_parent_map[ 9 ].parent_index.should == 0
+        
+        unregister_parent( parent_instance2 )
+
+        @local_parent_map[ 0 ].parent_instance.should == parent_instance
+        @local_parent_map[ 0 ].parent_index.should == 0
+        @local_parent_map[ 1 ].parent_instance.should == parent_instance
+        @local_parent_map[ 1 ].parent_index.should == 1
+        @local_parent_map[ 2 ].parent_instance.should == parent_instance
+        @local_parent_map[ 2 ].parent_index.should == 2
+
+        @local_parent_map[ 3 ].parent_instance.should == parent_instance3
+        @local_parent_map[ 3 ].parent_index.should == 0
+        @local_parent_map[ 4 ].parent_instance.should == parent_instance3
+        @local_parent_map[ 4 ].parent_index.should == 1
+        @local_parent_map[ 5 ].parent_instance.should == parent_instance3
+        @local_parent_map[ 5 ].parent_index.should == 2
+        @local_parent_map[ 6 ].parent_instance.should == parent_instance3
+        @local_parent_map[ 6 ].parent_index.should == 3
+
+        @local_parent_map[ 7 ].parent_instance.should == parent_instance4
+        @local_parent_map[ 7 ].parent_index.should == 0
+        
       end
     end
   end

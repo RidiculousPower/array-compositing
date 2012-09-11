@@ -3,20 +3,33 @@ require_relative '../../lib/array-compositing.rb'
 
 describe ::Array::Compositing do
 
-  ################
-  #  initialize  #
-  ################
+  #####################
+  #  initialize       #
+  #  register_parent  #
+  #####################
 
   it 'can add initialize with an ancestor, inheriting its values and linking to it as a child' do
   
     cascading_composite_array = ::Array::Compositing.new
 
-    cascading_composite_array.instance_variable_get( :@parent_composite_object ).should == nil
     cascading_composite_array.should == [ ]
+    cascading_composite_array.has_parents?.should == false
+    cascading_composite_array.parents.should == [ ]
     cascading_composite_array.push( :A, :B, :C, :D )
     
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
+    sub_cascading_composite_array.has_parents?.should == true
+    sub_cascading_composite_array.parents.should == [ cascading_composite_array ]
+    sub_cascading_composite_array.has_parent?( cascading_composite_array ).should == true
     sub_cascading_composite_array.should == [ :A, :B, :C, :D ]
+    
+    second_parent_array = ::Array::Compositing.new
+    second_parent_array.push( :E, :F, :G )
+    
+    sub_cascading_composite_array.register_parent( second_parent_array )
+    sub_cascading_composite_array.parents.should == [ cascading_composite_array, second_parent_array ]
+    sub_cascading_composite_array.has_parent?( second_parent_array ).should == true
+    sub_cascading_composite_array.should == [ :A, :B, :C, :D, :E, :F, :G ]
     
   end
 
@@ -1091,6 +1104,35 @@ describe ::Array::Compositing do
 
     cascading_composite_array.should == [  ]
     sub_cascading_composite_array.should == [ ]
+    
+  end
+
+  #######################
+  #  unregister_parent  #
+  #######################
+  
+  it 'can unregister parent instances that have been registered' do
+  
+    cascading_composite_array = ::Array::Compositing.new
+    cascading_composite_array.push( :A, :B, :C, :D )
+    
+    sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
+    
+    second_parent_array = ::Array::Compositing.new
+    second_parent_array.push( :E, :F, :G )
+
+    sub_cascading_composite_array.register_parent( second_parent_array )
+    
+    third_parent_array = ::Array::Compositing.new
+    third_parent_array.push( :H, :I, :J )
+
+    sub_cascading_composite_array.register_parent( third_parent_array )
+
+    sub_cascading_composite_array.should == [ :A, :B, :C, :D, :E, :F, :G, :H, :I, :J ]
+    
+    sub_cascading_composite_array.unregister_parent( second_parent_array )
+
+    sub_cascading_composite_array.should == [ :A, :B, :C, :D, :H, :I, :J ]
     
   end
   

@@ -45,24 +45,59 @@ class ::Array::Compositing::ParentIndexMap
 
   attr_reader :first_index_after_last_parent_element
   
-  #####################################
-  #  register_parent_composite_array  #
-  #####################################
+  #####################
+  #  register_parent  #
+  #####################
 
-  def register_parent_composite_array( parent_composite_array )
+  def register_parent( parent_instance )
     
-    @parent_local_maps[ parent_composite_array.__id__ ] = [ ]
+    @parent_local_maps[ parent_instance.__id__ ] = [ ]
     
   end
 
-  #######################################
-  #  unregister_parent_composite_array  #
-  #######################################
+  #######################
+  #  unregister_parent  #
+  #######################
 
-  def unregister_parent_composite_array( parent_composite_array )
+  ###
+  # Account for removal of all indexes corresponding to parent and return
+  #   array containing local indexes to be deleted.
+  #
+  def unregister_parent( parent_instance )
+
+    parent_local_map = @parent_local_maps.delete( parent_instance.__id__ )
     
-    @parent_local_maps.delete( parent_composite_array.__id__ )
+    # get sorted local indexes
+    local_indexes_to_delete = parent_local_map.select do |this_local_index|
+      if this_local_index < 0
+        false
+      else
+        true
+      end
+    end.sort.reverse
+
+    # for each index, smallest to largest, 
+    local_indexes_to_delete.each do |this_local_index|
+      
+      @local_parent_map.delete_at( this_local_index )
+      
+      # for each index, iterate each parent array, delete and decrement indexes > than index
+      @parent_local_maps.each do |this_parent, this_parent_local_map|
+        this_parent_local_map.each_with_index do |this_mapped_local_index, this_parent_index|
+          if this_mapped_local_index > this_local_index
+            this_parent_local_map[ this_parent_index ] = this_mapped_local_index - 1
+          end
+        end
+      end
+      
+    end
     
+    # note total decrease in parent elements
+    @first_index_after_last_parent_element -= local_indexes_to_delete.count
+    
+    # return reversed indexes for non-cascading delete_at
+    return local_indexes_to_delete.reverse
+
   end
   
   #############################
@@ -305,15 +340,12 @@ class ::Array::Compositing::ParentIndexMap
     
     parent_local_map = parent_local_map( parent_instance )
 
-    # It's possible we have no parent map yet (if the first insert is from an already-initialized parent
-    # that did not previously have any members).
-    case parent_insert_index = index_for_offset( parent_insert_index )
-      when 0
-        local_insert_index = parent_local_map[ parent_insert_index ] || 0
-      else
-        unless local_insert_index = parent_local_map[ parent_insert_index ]
-          local_insert_index = @first_index_after_last_parent_element
-        end
+    parent_insert_index = index_for_offset( parent_insert_index )
+    
+    unless local_insert_index = parent_local_map[ parent_insert_index ]
+      # It's possible we have no parent map yet (if the first insert is from an already-initialized parent
+      # that did not previously have any members).
+      local_insert_index = @first_index_after_last_parent_element
     end
     
     if local_insert_index < 0
@@ -332,16 +364,28 @@ class ::Array::Compositing::ParentIndexMap
     
     # Update any correspondences whose parent indexes are above the insert.
     parent_index_at_end_of_insert = parent_insert_index + object_count
-    remaining_count = parent_local_map.count - parent_index_at_end_of_insert
-    remaining_count.times do |this_time|
+    remaining_parent_count = parent_local_map.count - parent_index_at_end_of_insert
+    remaining_parent_count.times do |this_time|
       this_parent_index = parent_index_at_end_of_insert + this_time
       parent_local_map[ this_parent_index ] += object_count
     end
 
+    # for each index, iterate each parent array, delete and decrement indexes > than index
+    @parent_local_maps.each do |this_parent, this_parent_local_map|
+      # we already updated parent local map for this parent
+      next if this_parent_local_map == parent_local_map
+      # need to track how it affects other existing maps
+      this_parent_local_map.each_with_index do |this_local_index, this_parent_index|
+        if this_local_index >= local_insert_index
+          this_parent_local_map[ this_parent_index ] = this_local_index + object_count
+        end
+      end
+    end
+
     local_index_at_end_of_insert = local_insert_index + object_count
 
-    remaining_count = @local_parent_map.count - local_index_at_end_of_insert
-    remaining_count.times do |this_time|
+    remaining_local_count = @local_parent_map.count - local_index_at_end_of_insert
+    remaining_local_count.times do |this_time|
       this_local_index = local_index_at_end_of_insert + this_time
       if existing_parent_index_struct = @local_parent_map[ this_local_index ]
         existing_parent_index_struct.parent_index += object_count
@@ -380,6 +424,7 @@ class ::Array::Compositing::ParentIndexMap
     # if we're inside the set of parent elements then we need to tell the parent map to adjust
     if inside_parent_elements?( local_index )
 
+      # find the parent index corresponding to nearest local index above this one
       unless parent_insert_index_struct = @local_parent_map[ local_index ]
         next_local_index = local_index
         begin
@@ -388,14 +433,30 @@ class ::Array::Compositing::ParentIndexMap
         end while parent_insert_index_struct.nil? and next_local_index < @local_parent_map.count
       end
       
+      # if there was a parent after insert
+      # FIX - this should be superfluous? - didn't we already ensure this with :inside_parent_elements?
       if parent_insert_index_struct
+
         parent_local_map = parent_local_map( parent_insert_index_struct.parent_instance )
-        remaining_count = parent_local_map.count - parent_insert_index_struct.parent_index
+        remaining_parent_count = parent_local_map.count - parent_insert_index_struct.parent_index
         parent_insert_index = parent_insert_index_struct.parent_index
-        remaining_count.times do |this_time|
+        remaining_parent_count.times do |this_time|
           this_parent_index = parent_insert_index + this_time
           parent_local_map[ this_parent_index ] += object_count
         end
+
+        # for each index, iterate each parent array, delete and decrement indexes > than index
+        @parent_local_maps.each do |this_parent, this_parent_local_map|
+          # we already updated parent local map for this parent
+          next if this_parent_local_map == parent_local_map
+          # need to track how it affects other existing maps
+          this_parent_local_map.each_with_index do |this_local_index, this_parent_index|
+            if this_local_index >= local_index
+              this_parent_local_map[ this_parent_index ] = this_local_index + object_count
+            end
+          end
+        end
+
       end
       
     end
@@ -499,17 +560,29 @@ class ::Array::Compositing::ParentIndexMap
     local_delete_at_index = parent_local_map.delete_at( parent_delete_at_index )
     
     # update any correspondences whose parent indexes are below the delete
-    remaining_count = parent_local_map.count - parent_delete_at_index
-    remaining_count.times do |this_time|
+    remaining_parent_count = parent_local_map.count - parent_delete_at_index
+    remaining_parent_count.times do |this_time|
       this_parent_index = parent_delete_at_index + this_time
       parent_local_map[ this_parent_index ] -= 1
     end
 
-    remaining_count = @local_parent_map.count - local_delete_at_index
-    remaining_count.times do |this_time|
+    remaining_local_count = @local_parent_map.count - local_delete_at_index
+    remaining_local_count.times do |this_time|
       this_local_index = local_delete_at_index + this_time
       if parent_index_struct = @local_parent_map[ this_local_index ]
         parent_index_struct.parent_index -= 1
+      end
+    end
+
+    # for each index, iterate each parent array, delete and decrement indexes > than index
+    @parent_local_maps.each do |this_parent, this_parent_local_map|
+      # we already updated parent local map for this parent
+      next if this_parent_local_map == parent_local_map
+      # need to track how it affects other existing maps
+      this_parent_local_map.each_with_index do |this_local_index, this_parent_index|
+        if this_local_index >= local_delete_at_index
+          this_parent_local_map[ this_parent_index ] = this_local_index - 1
+        end
       end
     end
 
@@ -561,13 +634,25 @@ class ::Array::Compositing::ParentIndexMap
 
       if parent_index_struct
         parent_local_map = parent_local_map( parent_index_struct.parent_instance )
-        remaining_count = parent_local_map.count - parent_index_struct.parent_index
-        remaining_count.times do |this_time|
+        remaining_parent_count = parent_local_map.count - parent_index_struct.parent_index
+        remaining_parent_count.times do |this_time|
           this_parent_index = parent_index_struct.parent_index + this_time
           parent_local_map[ this_parent_index ] -= 1
         end
         if @first_index_after_last_parent_element > 0
           @first_index_after_last_parent_element -= 1
+        end
+      end
+      
+      # for each index, iterate each parent array, delete and decrement indexes > than index
+      @parent_local_maps.each do |this_parent, this_parent_local_map|
+        # we already updated parent local map for this parent
+        next if this_parent_local_map == parent_local_map
+        # need to track how it affects other existing maps
+        this_parent_local_map.each_with_index do |this_local_index, this_parent_index|
+          if this_local_index >= local_index
+            this_parent_local_map[ this_parent_index ] = this_local_index - 1
+          end
         end
       end
       
