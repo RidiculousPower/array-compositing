@@ -9,18 +9,81 @@ module ::Array::Compositing::ArrayInterface
 
   extend ::Module::Cluster
   
-  cluster( :compositing_array_interface ).before_include.cascade_to( :class ) do |hooked_instance|
+  ###
+  # @method non_cascading_set( index, object )
+  #
+  # Perform Array#set without cascading to children.
+  #
+  # @param index
+  #
+  #        Index for set.
+  #
+  # @param object
+  #
+  #        Object to set at index.
+  #
+  # @return [Object]
+  #
+  #         Object set.
+  #
+  cluster( :non_cascading_set ).before_include.cascade_to( :class ) do |hooked_instance|
     
     hooked_instance.class_eval do
       
       unless method_defined?( :non_cascading_set )
         alias_method :non_cascading_set, :[]=
       end
+      
+    end
 
+  end
+
+  ###
+  # @method non_cascading_insert( index, object )
+  #
+  # Perform Array#insert without cascading to children.
+  #
+  # @param index
+  #
+  #        Index for insert.
+  #
+  # @param objects
+  #
+  #        Objects to insert at index.
+  #
+  # @return [Object]
+  #
+  #         Objects inserted.
+  #
+  cluster( :non_cascading_insert ).before_include.cascade_to( :class ) do |hooked_instance|
+    
+    hooked_instance.class_eval do
+      
       unless method_defined?( :non_cascading_insert )
         alias_method :non_cascading_insert, :insert
       end
 
+    end
+    
+  end
+  
+  ###
+  # @method non_cascading_delete_at( index, object )
+  #
+  # Perform Array#delete_at without cascading to children.
+  #
+  # @param index
+  #
+  #        Index for delete.
+  #
+  # @return [Object]
+  #
+  #         Object set.
+  #
+  cluster( :non_cascading_delete_at ).before_include.cascade_to( :class ) do |hooked_instance|
+    
+    hooked_instance.class_eval do
+      
       unless method_defined?( :non_cascading_delete_at )
         alias_method :non_cascading_delete_at, :delete_at
       end
@@ -32,10 +95,23 @@ module ::Array::Compositing::ArrayInterface
   ################
   #  initialize  #
   ################
+  
+  ###
+  # @param parent_instance
+  #
+  #        Array::Compositing instance from which instance will inherit elements.
+  #
+  # @param configuration_instance
+  #
+  #        Object instance associated with instance.
+  #
+  # @param array_initialize_args
+  #
+  #        Arguments passed to Array#initialize.
+  #
+  def initialize( parent_instance = nil, configuration_instance = nil, *array_initialize_args )
 
-  def initialize( parent_instance = nil, configuration_instance = nil, *args )
-
-    super( configuration_instance, *args )
+    super( configuration_instance, *array_initialize_args )
     
     @parent_index_map = ::Array::Compositing::ParentIndexMap.new
     
@@ -56,7 +132,21 @@ module ::Array::Compositing::ArrayInterface
   #####################
   #  register_parent  #
   #####################
-
+  
+  ###
+  # Register a parent for element inheritance.
+  #
+  # @param parent_instance
+  #
+  #        Array::Compositing instance from which instance will inherit elements.
+  #
+  # @param insert_at_index
+  #
+  #        Index where parent elements will be inserted.
+  #        Default is that new parent elements will be inserted after last existing parent element.
+  #
+  # @return [Array::Compositing] Self.
+  #
   def register_parent( parent_instance, 
                        insert_at_index = @parent_index_map.first_index_after_last_parent_element )
     
@@ -88,6 +178,15 @@ module ::Array::Compositing::ArrayInterface
   #  unregister_parent  #
   #######################
 
+  ###
+  # Unregister a parent for element inheritance and remove all associated elements.
+  #
+  # @param parent_instance
+  #
+  #        Array::Compositing instance from which instance will inherit elements.
+  #
+  # @return [Array::Compositing] Self.
+  #
   def unregister_parent( parent_instance )
     
     local_indexes_to_delete = @parent_index_map.unregister_parent( parent_instance )
@@ -106,6 +205,21 @@ module ::Array::Compositing::ArrayInterface
   #  replace_parent  #
   ####################
 
+  ###
+  # Replace a registered parent for element inheritance with a different parent,
+  #   removing all associated elements of the existing parent and adding those
+  #   from the new parent.
+  #
+  # @param parent_instance
+  #
+  #        Existing Array::Compositing instance from which instance is inheriting elements.
+  #
+  # @param parent_instance
+  #
+  #        New Array::Compositing instance from which instance will inherit elements instead.
+  #
+  # @return [Array::Compositing] Self.
+  #
   def replace_parent( parent_instance, new_parent_instance  )
     
     unregister_parent( parent_instance )
@@ -120,6 +234,11 @@ module ::Array::Compositing::ArrayInterface
   #  has_parents?  #
   ##################
   
+  ###
+  # Query whether instance has parent instances from which it inherits elements.
+  #
+  # @return [true,false] Whether instance has one or more parent instances.
+  #
   def has_parents?
     
     return ! @parents.empty?
@@ -130,6 +249,13 @@ module ::Array::Compositing::ArrayInterface
   #  parents  #
   #############
   
+  ###
+  # @!attribute [r]
+  #
+  # Parents of instance from which instance inherits elements.
+  #
+  # @return [Array<Array::Compositing>]
+  #
   attr_reader :parents
 
   #################
@@ -145,7 +271,16 @@ module ::Array::Compositing::ArrayInterface
   ####################
   #  register_child  #
   ####################
-
+  
+  ###
+  # Register child instance that will inherit elements.
+  #
+  # @param child_composite_array
+  #
+  #        Instance that will inherit elements from this instance.
+  #
+  # @return [Array::Compositing] Self.
+  #
   def register_child( child_composite_array )
 
     @children.push( child_composite_array )
@@ -158,6 +293,15 @@ module ::Array::Compositing::ArrayInterface
   #  unregister_child  #
   ######################
 
+  ###
+  # Unregister child instance so that it will no longer inherit elements.
+  #
+  # @param child_composite_array
+  #
+  #        Instance that should no longer inherit elements from this instance.
+  #
+  # @return [Array::Compositing] Self.
+  #
   def unregister_child( child_composite_array )
 
     @children.delete( child_composite_array )
@@ -172,7 +316,7 @@ module ::Array::Compositing::ArrayInterface
   #  child_pre_set_hook  #
   ########################
 
-  def child_pre_set_hook( index, object, is_insert = false )
+  def child_pre_set_hook( index, object, is_insert = false, parent_instance = nil )
 
     return object
     
@@ -182,7 +326,7 @@ module ::Array::Compositing::ArrayInterface
   #  child_post_set_hook  #
   #########################
 
-  def child_post_set_hook( index, object, is_insert = false )
+  def child_post_set_hook( index, object, is_insert = false, parent_instance = nil )
     
     return object
     
@@ -192,7 +336,7 @@ module ::Array::Compositing::ArrayInterface
   #  child_pre_delete_hook  #
   ###########################
 
-  def child_pre_delete_hook( index )
+  def child_pre_delete_hook( index, parent_instance = nil )
     
     # false means delete does not take place
     return true
@@ -203,7 +347,7 @@ module ::Array::Compositing::ArrayInterface
   #  child_post_delete_hook  #
   ############################
 
-  def child_post_delete_hook( index, object )
+  def child_post_delete_hook( index, object, parent_instance = nil )
     
     return object
     
@@ -397,11 +541,15 @@ module ::Array::Compositing::ArrayInterface
     object = nil
     
     if @parent_index_map.requires_lookup?( local_index )
+
+      parent_index_struct = @parent_index_map.parent_index( local_index )
+      parent_instance = parent_index_struct.parent_instance
           
+      # if we deleted in parent and then child delete hook prevented local delete
+      # then we have an object passed since our parent can no longer provide it
       case optional_object.count
         when 0
-          parent_index_struct = @parent_index_map.parent_index( local_index )
-          object = parent_index_struct.parent_instance[ parent_index_struct.parent_index ]
+          object = parent_instance[ parent_index_struct.parent_index ]
         when 1
           object = optional_object[ 0 ]
       end
@@ -411,7 +559,7 @@ module ::Array::Compositing::ArrayInterface
       # So we don't want to sort/test uniqueness/etc. We just want to insert at the actual index.
 
       unless @without_child_hooks
-        object = child_pre_set_hook( local_index, object, false )    
+        object = child_pre_set_hook( local_index, object, false, parent_instance )    
       end
     
       unless @without_hooks
@@ -427,7 +575,7 @@ module ::Array::Compositing::ArrayInterface
       end
 
       unless @without_child_hooks
-        child_post_set_hook( local_index, object, false )
+        child_post_set_hook( local_index, object, false, parent_instance )
       end
 
     else
@@ -497,7 +645,7 @@ module ::Array::Compositing::ArrayInterface
       if @without_child_hooks
         child_pre_delete_hook_result = true
       else
-        child_pre_delete_hook_result = child_pre_delete_hook( local_index )
+        child_pre_delete_hook_result = child_pre_delete_hook( local_index, parent_instance )
       end
     
       if child_pre_delete_hook_result
@@ -525,7 +673,7 @@ module ::Array::Compositing::ArrayInterface
           end
 
           unless @without_child_hooks
-            child_post_delete_hook( local_index, object )
+            child_post_delete_hook( local_index, object, parent_instance )
           end
 
           parent_instance = self

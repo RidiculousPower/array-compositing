@@ -1020,7 +1020,7 @@ describe ::Array::Compositing do
     
     class ::Array::Compositing::SubMockChildPreSet < ::Array::Compositing
       
-      def child_pre_set_hook( index, object, is_insert = false )
+      def child_pre_set_hook( index, object, is_insert = false, parent_instance = nil )
         return :some_other_value
       end
       
@@ -1042,7 +1042,7 @@ describe ::Array::Compositing do
 
     class ::Array::Compositing::SubMockChildPostSet < ::Array::Compositing
       
-      def child_post_set_hook( index, object, is_insert = false )
+      def child_post_set_hook( index, object, is_insert = false, parent_instance = nil )
         push( :some_other_value )
       end
       
@@ -1065,7 +1065,7 @@ describe ::Array::Compositing do
 
     class ::Array::Compositing::SubMockChildPreDelete < ::Array::Compositing
       
-      def child_pre_delete_hook( index )
+      def child_pre_delete_hook( index, parent_instance = nil )
         false
       end
       
@@ -1090,7 +1090,7 @@ describe ::Array::Compositing do
 
     class ::Array::Compositing::SubMockChildPostDelete < ::Array::Compositing
       
-      def child_post_delete_hook( index, object )
+      def child_post_delete_hook( index, object, parent_instance = nil )
         delete( :some_other_value )
       end
       
