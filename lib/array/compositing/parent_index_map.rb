@@ -17,9 +17,9 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Create a parent index map for a given array instance.
   #
-  #   @param array_instance
+  # @param array_instance
   #
-  #          The array instance for which this parent index map is tracking parent elements.
+  #        The array instance for which this parent index map is tracking parent elements.
   #
   def initialize
     
@@ -43,15 +43,35 @@ class ::Array::Compositing::ParentIndexMap
   #  first_index_after_last_parent_element  #
   ###########################################
 
+  ###
+  # @!attribute [r]
+  #
+  # @return [Integer] 
+  #
+  #         Index of first element in local array after all parent elements.
+  #
   attr_reader :first_index_after_last_parent_element
   
   #####################
   #  register_parent  #
   #####################
 
+  ###
+  # Register a parent to track element inheritance.
+  #
+  # @param [Array::Compositing] parent_instance
+  #
+  #        Instance from which instance will inherit elements.
+  #
+  # @return [Array::Compositing::ParentIndexMap] 
+  #
+  #         Self.
+  #
   def register_parent( parent_instance )
     
     @parent_local_maps[ parent_instance.__id__ ] = [ ]
+    
+    return self
     
   end
 
@@ -62,6 +82,15 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Account for removal of all indexes corresponding to parent and return
   #   array containing local indexes to be deleted.
+  #
+  # @param [Array::Compositing] parent_instance
+  #
+  #        Instance from which instance will inherit elements.
+  #
+  # @return [Array<Integer>] 
+  #
+  #         Array of indexes corresponding to parent elements to be removed 
+  #         from local instance.
   #
   def unregister_parent( parent_instance )
 
@@ -108,9 +137,13 @@ class ::Array::Compositing::ParentIndexMap
   # Query whether local index is inside range of indexes that include parent elements 
   #   (ie. whether local index is before the last parent index in array instance).
   #
-  #   @param local_index
+  # @param [Integer] local_index
   #
-  #          Index in local array to query against 
+  #        Index in local array to query against 
+  #
+  # @return [true,false]
+  #
+  #         Whether index is within the range of elements that contain parent elements.
   #
   def inside_parent_elements?( local_index )
     
@@ -127,15 +160,17 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Query whether parent index in parent instance has been replaced in local instance.
   # 
-  #   @params parent_instance
+  # @params [Array::Compositing] parent_instance
   #
-  #           Parent array instance for which parent index is being queried.
+  #         Parent array instance for which parent index is being queried.
   #
-  #   @params parent_index
+  # @params [Integer] parent_index
   #
-  #           Index in parent array instance being queried in local array instance.
+  #         Index in parent array instance being queried in local array instance.
   #
-  #   @return [true,false] Whether parent index in parent instance has been replaced in local instance.
+  # @return [true,false] 
+  #
+  #         Whether parent index in parent instance has been replaced in local instance.
   #
   def replaced_parent_element_with_parent_index?( parent_instance, parent_index )
     
@@ -179,11 +214,13 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Query whether index in local instance has been replaced or created in local instance.
   # 
-  #   @params local_index
+  # @params [Integer] local_index
   #
-  #           Index in local array instance.
+  #         Index in local array instance.
   #
-  #   @return [true,false] Whether index has been replaced or created in local instance.
+  # @return [true,false] 
+  #
+  #         Whether index has been replaced or created in local instance.
   #
   def replaced_parent_element_with_local_index?( local_index )
     
@@ -200,13 +237,13 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Query whether index in local instance requires lookup in a parent instance.
   # 
-  #   @params local_index
+  # @params [Integer] local_index
   #
-  #           Index in local array instance.
+  #         Index in local array instance.
   #
-  #   @return [true,false]
+  # @return [true,false]
   #
-  #           Whether lookup is required.
+  #         Whether lookup is required.
   #
   def requires_lookup?( local_index )
     
@@ -223,7 +260,7 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # List of indexes requiring lookup in a parent instance.
   # 
-  # @return [Array<Fixnum>]
+  # @return [Array<Integer>]
   #
   #         list of indexes requiring lookup in a parent instance.
   #
@@ -248,11 +285,13 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Declare that local index has been looked up.
   #
-  #   @params local_index
+  # @params [Integer] local_index
+  # 
+  #         Index in local array instance.
+  # 
+  # @return [self] 
   #
-  #           Index in local array instance.
-  #
-  #   @return [self] Self.
+  #         Self.
   #
   def looked_up!( local_index )
     
@@ -271,9 +310,13 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Get parent instance and index corresponding to local index.
   #
+  # @params [Integer] local_index
+  # 
+  #         Index in local array instance.
   #
-  # @return [Array::Compositing::ParentIndexMap::ParentIndexStruct] Struct 
-  #         containing parent instance and index.
+  # @return [Array::Compositing::ParentIndexMap::ParentIndexStruct] 
+  #
+  #         Struct containing parent instance and index.
   #
   def parent_index( local_index )
     
@@ -290,15 +333,17 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Get local index for parent instance and index.
   #
-  #   @params parent_instance
+  # @params [Array::Compositing] parent_instance
+  # 
+  #         Parent array instance for which parent index is being queried.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance being queried in local array instance.
+  # 
+  # @return [Integer] 
   #
-  #           Parent array instance for which parent index is being queried.
-  #
-  #   @params parent_index
-  #
-  #           Index in parent array instance being queried in local array instance.
-  #
-  #   @return [Fixnum] Local index.
+  #         Local index.
   #
   def local_index( parent_instance, parent_index )
     
@@ -320,19 +365,21 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Update index information to represent insert in parent instance.
   #
-  #   @params parent_instance
+  # @params [Array::Compositing] parent_instance
+  # 
+  #         Parent array instance for which insert is happening.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance for insert.
+  # 
+  # @params [Integer] object_count
+  # 
+  #         Number of elements inserted.
+  # 
+  # @return [Integer] 
   #
-  #           Parent array instance for which insert is happening.
-  #
-  #   @params parent_index
-  #
-  #           Index in parent array instance for insert.
-  #
-  #   @params object_count
-  #
-  #           Number of elements inserted.
-  #
-  #   @return [Fixnum] Local index where insert took place.
+  #         Local index where insert took place.
   #
   def parent_insert( parent_instance, parent_insert_index, object_count )
 
@@ -406,15 +453,17 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Update index information to represent insert in local instance.
   #
-  #   @params local_index
+  # @params [Integer] local_index
+  # 
+  #         Local insert index.
+  # 
+  # @params [Integer] object_count
+  # 
+  #         Number of elements inserted.
+  # 
+  # @return [Integer] 
   #
-  #           Local insert index.
-  #
-  #   @params object_count
-  #
-  #           Number of elements inserted.
-  #
-  #   @return [Fixnum] Local index where insert took place.
+  #         Local index where insert took place.
   #
   def local_insert( local_index, object_count )
 
@@ -479,15 +528,17 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Update index information to represent set in parent instance.
   #
-  #   @params parent_instance
+  # @params [Array::Compositing] parent_instance
+  # 
+  #         Parent array instance for which parent index is being set.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance being queried in local array instance.
+  # 
+  # @return [Integer] 
   #
-  #           Parent array instance for which parent index is being set.
-  #
-  #   @params parent_index
-  #
-  #           Index in parent array instance being queried in local array instance.
-  #
-  #   @return [Fixnum] Local index where insert took place.
+  #         Local index where insert took place.
   #
   def parent_set( parent_instance, parent_index )
 
@@ -515,11 +566,13 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Update index information to represent insert in local instance.
   #
-  #   @params local_index
+  # @params [Integer] local_index
+  # 
+  #         Local index for set.
+  # 
+  # @return [Integer] 
   #
-  #           Local index for set.
-  #
-  #   @return [Fixnum] Local index where insert took place.
+  #         Local index where insert took place.
   #
   def local_set( local_index )
 
@@ -540,15 +593,17 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Update index information to represent set in parent instance.
   #
-  #   @params parent_instance
+  # @params [Array::Compositing] parent_instance
+  # 
+  #         Parent array instance for which delete is happening.
+  # 
+  # @params [Integer] parent_delete_at_index
+  # 
+  #         Index in parent array instance for delete in local array instance.
+  # 
+  # @return [Integer] 
   #
-  #           Parent array instance for which delete is happening.
-  #
-  #   @params parent_delete_at_index
-  #
-  #           Index in parent array instance for delete in local array instance.
-  #
-  #   @return [Fixnum] Local index where insert took place.
+  #         Local index where insert took place.
   #
   def parent_delete_at( parent_instance, parent_delete_at_index )
 
@@ -608,11 +663,13 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Update index information to represent delete in local instance.
   #
-  #   @params local_index
+  # @params [Integer] local_index
+  # 
+  #         Local index for delete.
+  # 
+  # @return [Integer] 
   #
-  #           Local index for delete.
-  #
-  #   @return [Fixnum] Local index where delete took place.
+  #         Local index where delete took place.
   #
   def local_delete_at( local_index )
 
@@ -673,9 +730,9 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Get parent to local map for parent instance.
   #
-  #   @params parent_instance
-  #
-  #           Parent array instance for which parent index is being queried.
+  # @params [Array::Compositing] parent_instance
+  # 
+  #         Parent array instance for which parent index is being queried.
   #
   def parent_local_map( parent_instance )
     
@@ -690,11 +747,13 @@ class ::Array::Compositing::ParentIndexMap
   ###
   # Translate index offset from start or end of array into offset from start.
   #
-  #   @param index_offset
+  # @param [Integer] index_offset
+  # 
+  #        Positive or negative offset indicating distance from start or end of array.
+  # 
+  # @return [Integer]
   #
-  #          Positive or negative offset indicating distance from start or end of array.
-  #
-  #   @return Positive offset indicating distance from start of array.
+  #         Positive offset indicating distance from start of array.
   #
   def index_for_offset( index_offset )
     

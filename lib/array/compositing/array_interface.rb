@@ -8,89 +8,6 @@ module ::Array::Compositing::ArrayInterface
   ParentIndexStruct = ::Struct.new( :local_index, :replaced )
 
   extend ::Module::Cluster
-  
-  ###
-  # @method non_cascading_set( index, object )
-  #
-  # Perform Array#set without cascading to children.
-  #
-  # @param index
-  #
-  #        Index for set.
-  #
-  # @param object
-  #
-  #        Object to set at index.
-  #
-  # @return [Object]
-  #
-  #         Object set.
-  #
-  cluster( :non_cascading_set ).before_include.cascade_to( :class ) do |hooked_instance|
-    
-    hooked_instance.class_eval do
-      
-      unless method_defined?( :non_cascading_set )
-        alias_method :non_cascading_set, :[]=
-      end
-      
-    end
-
-  end
-
-  ###
-  # @method non_cascading_insert( index, object )
-  #
-  # Perform Array#insert without cascading to children.
-  #
-  # @param index
-  #
-  #        Index for insert.
-  #
-  # @param objects
-  #
-  #        Objects to insert at index.
-  #
-  # @return [Object]
-  #
-  #         Objects inserted.
-  #
-  cluster( :non_cascading_insert ).before_include.cascade_to( :class ) do |hooked_instance|
-    
-    hooked_instance.class_eval do
-      
-      unless method_defined?( :non_cascading_insert )
-        alias_method :non_cascading_insert, :insert
-      end
-
-    end
-    
-  end
-  
-  ###
-  # @method non_cascading_delete_at( index, object )
-  #
-  # Perform Array#delete_at without cascading to children.
-  #
-  # @param index
-  #
-  #        Index for delete.
-  #
-  # @return [Object]
-  #
-  #         Object set.
-  #
-  cluster( :non_cascading_delete_at ).before_include.cascade_to( :class ) do |hooked_instance|
-    
-    hooked_instance.class_eval do
-      
-      unless method_defined?( :non_cascading_delete_at )
-        alias_method :non_cascading_delete_at, :delete_at
-      end
-      
-    end
-    
-  end
     
   ################
   #  initialize  #
@@ -127,6 +44,103 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
+  ###################################  Non-Cascading Behavior  ####################################
+
+  #######################
+  #  non_cascading_set  #
+  #######################
+  
+  ###
+  # @method non_cascading_set( index, object )
+  #
+  # Perform Array#set without cascading to children.
+  #
+  # @param index
+  #
+  #        Index for set.
+  #
+  # @param object
+  #
+  #        Object to set at index.
+  #
+  # @return [Object]
+  #
+  #         Object set.
+  #
+  cluster( :non_cascading_set ).before_include.cascade_to( :class ) do |hooked_instance|
+    
+    hooked_instance.class_eval do
+      
+      unless method_defined?( :non_cascading_set )
+        alias_method :non_cascading_set, :[]=
+      end
+      
+    end
+
+  end
+
+  ##########################
+  #  non_cascading_insert  #
+  ##########################
+
+  ###
+  # @method non_cascading_insert( index, object )
+  #
+  # Perform Array#insert without cascading to children.
+  #
+  # @param index
+  #
+  #        Index for insert.
+  #
+  # @param objects
+  #
+  #        Objects to insert at index.
+  #
+  # @return [Object]
+  #
+  #         Objects inserted.
+  #
+  cluster( :non_cascading_insert ).before_include.cascade_to( :class ) do |hooked_instance|
+    
+    hooked_instance.class_eval do
+      
+      unless method_defined?( :non_cascading_insert )
+        alias_method :non_cascading_insert, :insert
+      end
+
+    end
+    
+  end
+  
+  #############################
+  #  non_cascading_delete_at  #
+  #############################
+  
+  ###
+  # @method non_cascading_delete_at( index, object )
+  #
+  # Perform Array#delete_at without cascading to children.
+  #
+  # @param index
+  #
+  #        Index for delete.
+  #
+  # @return [Object]
+  #
+  #         Object set.
+  #
+  cluster( :non_cascading_delete_at ).before_include.cascade_to( :class ) do |hooked_instance|
+    
+    hooked_instance.class_eval do
+      
+      unless method_defined?( :non_cascading_delete_at )
+        alias_method :non_cascading_delete_at, :delete_at
+      end
+      
+    end
+    
+  end
+
   ###################################  Sub-Array Management  #######################################
 
   #####################
@@ -136,11 +150,11 @@ module ::Array::Compositing::ArrayInterface
   ###
   # Register a parent for element inheritance.
   #
-  # @param parent_instance
+  # @param [Array::Compositing] parent_instance
   #
-  #        Array::Compositing instance from which instance will inherit elements.
+  #        Instance from which instance will inherit elements.
   #
-  # @param insert_at_index
+  # @param [Integer] insert_at_index
   #
   #        Index where parent elements will be inserted.
   #        Default is that new parent elements will be inserted after last existing parent element.
@@ -262,9 +276,18 @@ module ::Array::Compositing::ArrayInterface
   #  has_parent?  #
   #################
   
-  def has_parent?( parent_instance )
+  ###
+  # Query whether instance has instance as a parent instance from which it inherits elements.
+  #
+  # @params potential_parent_instance
+  # 
+  #         Array instance being queried.
+  # 
+  # @return [true,false] Whether potential_parent_instance is a parent of instance.
+  #
+  def has_parent?( potential_parent_instance )
     
-    return @parents.include?( parent_instance )
+    return @parents.include?( potential_parent_instance )
     
   end
 
@@ -316,6 +339,30 @@ module ::Array::Compositing::ArrayInterface
   #  child_pre_set_hook  #
   ########################
 
+  ###
+  # A hook that is called before setting a value inherited from a parent set; 
+  #   return value is used in place of object.
+  #
+  # @param [Integer] index 
+  #
+  #        Index at which set/insert is taking place.
+  #
+  # @param [Object] object 
+  #
+  #        Element being set/inserted.
+  #
+  # @param [true,false] is_insert 
+  #
+  #        Whether this set or insert is inserting a new index.
+  #
+  # @param [Array::Compositing] parent_instance 
+  #
+  #        Instance that initiated set or insert.
+  #
+  # @return [true,false] 
+  #
+  #         Return value is used in place of object.
+  #
   def child_pre_set_hook( index, object, is_insert = false, parent_instance = nil )
 
     return object
@@ -326,6 +373,27 @@ module ::Array::Compositing::ArrayInterface
   #  child_post_set_hook  #
   #########################
 
+  ###
+  # A hook that is called after setting a value inherited from a parent set.
+  #
+  # @param [Integer] index 
+  #
+  #        Index at which set/insert is taking place.
+  #
+  # @param [Object] object 
+  #
+  #        Element being set/inserted.
+  #
+  # @param [true,false] is_insert 
+  #
+  #        Whether this set or insert is inserting a new index.
+  #
+  # @param [Array::Compositing] parent_instance 
+  #
+  #        Instance that initiated set or insert.
+  #
+  # @return [Object] Ignored.
+  #
   def child_post_set_hook( index, object, is_insert = false, parent_instance = nil )
     
     return object
@@ -336,6 +404,22 @@ module ::Array::Compositing::ArrayInterface
   #  child_pre_delete_hook  #
   ###########################
 
+  ###
+  # A hook that is called before deleting a value inherited from a parent delete; 
+  #   if return value is false, delete does not occur.
+  #
+  # @param [Integer] index 
+  #
+  #        Index at which delete is taking place.
+  #
+  # @param [Array::Compositing] parent_instance 
+  #
+  #        Instance that initiated delete.
+  #
+  # @return [true,false] 
+  #
+  #         If return value is false, delete does not occur.
+  #
   def child_pre_delete_hook( index, parent_instance = nil )
     
     # false means delete does not take place
@@ -347,6 +431,25 @@ module ::Array::Compositing::ArrayInterface
   #  child_post_delete_hook  #
   ############################
 
+  ###
+  # A hook that is called after deleting a value inherited from a parent delete.
+  #
+  # @param [Integer] index 
+  #
+  #        Index at which delete took place.
+  #
+  # @param [Object] object 
+  #
+  #        Element deleted.
+  #
+  # @param [Array::Compositing] parent_instance 
+  #
+  #        Instance that initiated delete.
+  #
+  # @return [Object] 
+  #
+  #         Object returned in place of delete result.
+  #
   def child_post_delete_hook( index, object, parent_instance = nil )
     
     return object
@@ -475,10 +578,19 @@ module ::Array::Compositing::ArrayInterface
   #############
   #  freeze!  #
   #############
-
-  # freezes configuration and prevents ancestors from changing this configuration in the future
+  
+  ###
+  # Unregisters all parents without removing values inherited from them.
+  #
+  # @return [Array::Compositing]
+  #
+  #         Self.
+  #
   def freeze!
-
+    
+    # look up all values
+    load_parent_state
+    
     # unregister with parent composite so we don't get future updates from it
     @parents.each do |this_parent_instance|
       this_parent_instance.unregister_child( self )
@@ -535,7 +647,26 @@ module ::Array::Compositing::ArrayInterface
   #####################################
   #  lazy_set_parent_element_in_self  #
   #####################################
-
+  
+  ###
+  # Perform look-up of local index in parent or load value delivered from parent
+  #   when parent delete was prevented in child.
+  #
+  # @overload lazy_set_parent_element_in_self( local_index, optional_object, ... )
+  #
+  #   @param [Integer] local_index
+  #
+  #          Index in instance for which value requires look-up/set.
+  #
+  #   @param optional_object
+  #
+  #          If we deleted in parent and then child delete hook prevented local delete
+  #          then we have an object passed since our parent can no longer provide it
+  #
+  # @return [Object]
+  #
+  #         Lazy set value.
+  #
   def lazy_set_parent_element_in_self( local_index, *optional_object )
 
     object = nil
@@ -545,8 +676,6 @@ module ::Array::Compositing::ArrayInterface
       parent_index_struct = @parent_index_map.parent_index( local_index )
       parent_instance = parent_index_struct.parent_instance
           
-      # if we deleted in parent and then child delete hook prevented local delete
-      # then we have an object passed since our parent can no longer provide it
       case optional_object.count
         when 0
           object = parent_instance[ parent_index_struct.parent_index ]
@@ -591,7 +720,26 @@ module ::Array::Compositing::ArrayInterface
   ###########################
   #  update_for_parent_set  #
   ###########################
-
+  
+  ###
+  # Perform #set in self inherited from #set requested on parent (or parent of parent).
+  #
+  # @param [Array::Compositing] parent_instance
+  #
+  #        Instance where #set occurred that is now cascading downward.
+  #
+  # @param [Integer] parent_index
+  #
+  #        Index in parent where #set occurred.
+  #
+  # @param [Object] object
+  #
+  #        Object set at index.
+  #
+  # @return [Array::Compositing]
+  #
+  #         Self.
+  #
   def update_for_parent_set( parent_instance, parent_index, object )
 
     unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_instance, parent_index )
@@ -607,6 +755,8 @@ module ::Array::Compositing::ArrayInterface
       end
 
     end
+    
+    return self
 
   end
 
@@ -614,6 +764,27 @@ module ::Array::Compositing::ArrayInterface
   #  update_for_parent_insert  #
   ##############################
 
+  ###
+  # Perform #insert in self inherited from #insert requested on parent (or parent of parent).
+  #   Inserts cascade individually, even if #insert was called on the parent with multiple
+  #   objects.
+  #
+  # @param [Array::Compositing] parent_instance
+  #
+  #        Instance where #insert occurred that is now cascading downward.
+  #
+  # @param [Integer] parent_index
+  #
+  #        Index in parent where #insert occurred.
+  #
+  # @param [Object] object
+  #
+  #        Object to insert at index.
+  #
+  # @return [Array::Compositing]
+  #
+  #         Self.
+  #
   def update_for_parent_insert( parent_instance, requested_parent_index, parent_index, object )
 
     local_index = @parent_index_map.parent_insert( parent_instance, parent_index, 1 )
@@ -627,6 +798,8 @@ module ::Array::Compositing::ArrayInterface
         update_for_parent_insert( parent_instance, local_index, local_index, object )
       end
     end
+
+    return self
     
   end
 
@@ -634,6 +807,21 @@ module ::Array::Compositing::ArrayInterface
   #  update_for_parent_delete_at  #
   #################################
 
+  ###
+  # Perform #set in self inherited from #delete_at requested on parent (or parent of parent).
+  #
+  # @param [Array::Compositing] parent_instance
+  #
+  #        Instance where #delete_at occurred that is now cascading downward.
+  #
+  # @param [Integer] parent_index
+  #
+  #        Index in parent where #delete_at occurred.
+  #
+  # @return [true,false]
+  #
+  #        Whether delete occurred.
+  #
   def update_for_parent_delete_at( parent_instance, parent_index, object )
 
     did_delete = false
@@ -704,9 +892,19 @@ module ::Array::Compositing::ArrayInterface
   #  parent_reversed!  #
   ######################
   
+  ###
+  # Tell instance that parent has reversed its order.
+  #   This is necessary because cascading changes will already cause 
+  #   elements to have reversed, but instance needs to know it was
+  #   reversed so that sorting can continue appropriately.
+  #
+  # @return [true,false]
+  #
+  #         Whether resulting sort order is reversed.
+  #   
   def parent_reversed!
     
-    @sort_order_reversed = ! @sort_order_reversed
+    return @sort_order_reversed = ! @sort_order_reversed
     
   end
 
@@ -714,14 +912,28 @@ module ::Array::Compositing::ArrayInterface
   #  load_parent_state  #
   #######################
 
-  def load_parent_state
+  ###
+  # Load all elements not yet inherited from parents (but marked to be inherited).
+  #
+  # @return [Array::Compositing]
+  #
+  #         Self.
+  #
+  def load_parent_state( parent_instance = nil )
 
-    # if is used for case where duplicate is created (like :uniq) and initialization not called during dupe process
+    #
+    # We have to check for @parent_index_map.
+    #
+    # This is because of cases where duplicate instance is created (like #uniq) 
+    # and initialization not called during dup process.
+    #
     if @parent_index_map
       @parent_index_map.indexes_requiring_lookup.each do |this_local_index|
         lazy_set_parent_element_in_self( this_local_index )
       end
     end
+    
+    return self
     
   end
   
