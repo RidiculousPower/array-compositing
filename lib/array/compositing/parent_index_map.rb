@@ -93,39 +93,45 @@ class ::Array::Compositing::ParentIndexMap
   #         from local instance.
   #
   def unregister_parent( parent_instance )
-
-    parent_local_map = @parent_local_maps.delete( parent_instance.__id__ )
+  
+    return_value = nil
     
-    # get sorted local indexes
-    local_indexes_to_delete = parent_local_map.select do |this_local_index|
-      if this_local_index < 0
-        false
-      else
-        true
-      end
-    end.sort.reverse
+    if parent_local_map = @parent_local_maps.delete( parent_instance.__id__ )
+    
+      # get sorted local indexes
+      local_indexes_to_delete = parent_local_map.select do |this_local_index|
+        if this_local_index < 0
+          false
+        else
+          true
+        end
+      end.sort.reverse
 
-    # for each index, smallest to largest, 
-    local_indexes_to_delete.each do |this_local_index|
+      # for each index, smallest to largest, 
+      local_indexes_to_delete.each do |this_local_index|
       
-      @local_parent_map.delete_at( this_local_index )
+        @local_parent_map.delete_at( this_local_index )
       
-      # for each index, iterate each parent array, delete and decrement indexes > than index
-      @parent_local_maps.each do |this_parent, this_parent_local_map|
-        this_parent_local_map.each_with_index do |this_mapped_local_index, this_parent_index|
-          if this_mapped_local_index > this_local_index
-            this_parent_local_map[ this_parent_index ] = this_mapped_local_index - 1
+        # for each index, iterate each parent array, delete and decrement indexes > than index
+        @parent_local_maps.each do |this_parent, this_parent_local_map|
+          this_parent_local_map.each_with_index do |this_mapped_local_index, this_parent_index|
+            if this_mapped_local_index > this_local_index
+              this_parent_local_map[ this_parent_index ] = this_mapped_local_index - 1
+            end
           end
         end
+      
       end
+    
+      # note total decrease in parent elements
+      @first_index_after_last_parent_element -= local_indexes_to_delete.count
+      
+      return_value = local_indexes_to_delete.reverse
       
     end
     
-    # note total decrease in parent elements
-    @first_index_after_last_parent_element -= local_indexes_to_delete.count
-    
     # return reversed indexes for non-cascading delete_at
-    return local_indexes_to_delete.reverse
+    return return_value
 
   end
   

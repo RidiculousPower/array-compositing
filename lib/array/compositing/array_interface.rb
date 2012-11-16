@@ -35,7 +35,7 @@ module ::Array::Compositing::ArrayInterface
     @parent_index_map = ::Array::Compositing::ParentIndexMap.new
     
     # arrays from which we inherit
-    @parents = [ ]
+    @parents = ::Array::Compositing::ParentsArray.new
     
     # arrays that inherit from us
     @children = [ ]
@@ -209,13 +209,12 @@ module ::Array::Compositing::ArrayInterface
   #
   def unregister_parent( parent_instance )
     
-    local_indexes_to_delete = @parent_index_map.unregister_parent( parent_instance )
+    if local_indexes_to_delete = @parent_index_map.unregister_parent( parent_instance )
+      delete_at_indexes( *local_indexes_to_delete )
+    end
     
     @parents.delete( parent_instance )
-    
     parent_instance.unregister_child( self )
-
-    delete_at_indexes( *local_indexes_to_delete )
 
     return self
     
@@ -329,7 +328,7 @@ module ::Array::Compositing::ArrayInterface
   attr_reader :parents
 
   #################
-  #  has_parent?  #
+  #  is_parent?  #
   #################
   
   ###
@@ -343,7 +342,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Whether potential_parent_instance is a parent of instance.
   #
-  def has_parent?( potential_parent_instance )
+  def is_parent?( potential_parent_instance )
     
     return @parents.include?( potential_parent_instance )
     
@@ -486,6 +485,42 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
+  ############
+  #  to_a  #
+  ############
+  
+  def to_a
+   puts 'BLAH1'
+    load_parent_state
+   
+    super
+    
+  end
+
+  ############
+  #  to_ary  #
+  ############
+  
+  def to_ary
+   puts 'BLAH2'
+    load_parent_state
+   
+    super
+    
+  end
+
+  ##########
+  #  to_s  #
+  ##########
+  
+  def to_s
+   
+    load_parent_state
+   
+    super
+    
+  end
+
   #############
   #  inspect  #
   #############
@@ -622,6 +657,54 @@ module ::Array::Compositing::ArrayInterface
     
     return self
 
+  end
+
+  #######################
+  #  load_parent_state  #
+  #######################
+
+  ###
+  # Load all elements not yet inherited from parent or parents (but marked to be inherited).
+  #
+  # @param [Array::Compositing] parent_instance
+  #
+  #        Load state only from parent instance if specified.
+  #        Otherwise all parent's state will be loaded.
+  #
+  # @return [Array::Compositing]
+  #
+  #         Self.
+  #
+  def load_parent_state( parent_instance = nil )
+
+    #
+    # We have to check for @parent_index_map.
+    #
+    # This is because of cases where duplicate instance is created (like #uniq) 
+    # and initialization not called during dup process.
+    #
+    if @parent_index_map
+    
+      if parent_instance
+
+        @parent_index_map.indexes_requiring_lookup.each do |this_local_index, this_parent_struct|
+          if this_parent_struct.parent_instance == parent_instance
+            lazy_set_parent_element_in_self( this_local_index )
+          end
+        end
+      
+      else
+      
+        @parent_index_map.indexes_requiring_lookup.each do |this_local_index, this_parent_struct|
+          lazy_set_parent_element_in_self( this_local_index )
+        end
+      
+      end
+        
+    end
+    
+    return self
+    
   end
 
   ######################################################################################################################
@@ -933,54 +1016,6 @@ module ::Array::Compositing::ArrayInterface
   def parent_reversed!
     
     return @sort_order_reversed = ! @sort_order_reversed
-    
-  end
-
-  #######################
-  #  load_parent_state  #
-  #######################
-
-  ###
-  # Load all elements not yet inherited from parent or parents (but marked to be inherited).
-  #
-  # @param [Array::Compositing] parent_instance
-  #
-  #        Load state only from parent instance if specified.
-  #        Otherwise all parent's state will be loaded.
-  #
-  # @return [Array::Compositing]
-  #
-  #         Self.
-  #
-  def load_parent_state( parent_instance = nil )
-
-    #
-    # We have to check for @parent_index_map.
-    #
-    # This is because of cases where duplicate instance is created (like #uniq) 
-    # and initialization not called during dup process.
-    #
-    if @parent_index_map
-    
-      if parent_instance
-
-        @parent_index_map.indexes_requiring_lookup.each do |this_local_index, this_parent_struct|
-          if this_parent_struct.parent_instance == parent_instance
-            lazy_set_parent_element_in_self( this_local_index )
-          end
-        end
-      
-      else
-      
-        @parent_index_map.indexes_requiring_lookup.each do |this_local_index, this_parent_struct|
-          lazy_set_parent_element_in_self( this_local_index )
-        end
-      
-      end
-        
-    end
-    
-    return self
     
   end
   

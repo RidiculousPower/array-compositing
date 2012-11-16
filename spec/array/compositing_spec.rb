@@ -20,7 +20,7 @@ describe ::Array::Compositing do
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
     sub_cascading_composite_array.has_parents?.should == true
     sub_cascading_composite_array.parents.should == [ cascading_composite_array ]
-    sub_cascading_composite_array.has_parent?( cascading_composite_array ).should == true
+    sub_cascading_composite_array.is_parent?( cascading_composite_array ).should == true
     sub_cascading_composite_array.should == [ :A, :B, :C, :D ]
     
     second_parent_array = ::Array::Compositing.new
@@ -28,7 +28,7 @@ describe ::Array::Compositing do
     
     sub_cascading_composite_array.register_parent( second_parent_array )
     sub_cascading_composite_array.parents.should == [ cascading_composite_array, second_parent_array ]
-    sub_cascading_composite_array.has_parent?( second_parent_array ).should == true
+    sub_cascading_composite_array.is_parent?( second_parent_array ).should == true
     sub_cascading_composite_array.should == [ :A, :B, :C, :D, :E, :F, :G ]
     
   end
