@@ -153,8 +153,9 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def register_parent( parent_instance, 
-                       insert_at_index = @parent_index_map.first_index_after_last_parent_element )
+  def register_parent( parent_instance, insert_at_index = nil )
+    
+    insert_at_index ||= @parent_index_map.first_index_after_last_parent_element
     
     unless @parents.include?( parent_instance )
       
@@ -171,6 +172,8 @@ module ::Array::Compositing::ArrayInterface
     
       # placeholders so we don't have to stub :count, etc.
       inheriting_element_count.times do |this_time|
+        # we want undecorated because we are just inserting placeholders
+        # hooks are called at lazy-load
         undecorated_insert( insert_at_index, nil )
       end    
     
