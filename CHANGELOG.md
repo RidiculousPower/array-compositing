@@ -57,3 +57,7 @@ Lazy load fix for :include?
 ## 10/15/2012 ##
 
 Updated to support multiple parents.
+
+## 11/24/2012 ##
+
+Updated for fake Array inheritance support since inheriting from Array prevents #to_a from being called at splat.
