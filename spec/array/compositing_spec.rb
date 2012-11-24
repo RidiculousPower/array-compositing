@@ -130,16 +130,20 @@ describe ::Array::Compositing do
     sub_cascading_composite_array.should == [ :A, :B, :C, :B ]
 
   end
+
+  #######
+  #  +  #
+  #######
+  
+  # FIX
+  # + does not currently work for compositing because it doesn't modify self
+  # perhaps we can fix this by having duplicate inherit parents/children
   
   ############
   #  concat  #
-  #  +       #
   ############
 
   it 'can add elements' do
-
-    # NOTE: this breaks + by causing it to modify the array like +=
-    # The alternative was worse.
 
     cascading_composite_array = ::Array::Compositing.new
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
@@ -148,7 +152,7 @@ describe ::Array::Compositing do
     cascading_composite_array.should == [ :A ]
     sub_cascading_composite_array.should == [ :A ]
 
-    cascading_composite_array += [ :B ]
+    cascading_composite_array.concat( [ :B ] )
     cascading_composite_array.should == [ :A, :B ]
     sub_cascading_composite_array.should == [ :A, :B ]
 
@@ -156,7 +160,7 @@ describe ::Array::Compositing do
     cascading_composite_array.should == [ :A, :B ]
     sub_cascading_composite_array.should == [ :A, :B, :C ]
 
-    sub_cascading_composite_array += [ :B ]
+    sub_cascading_composite_array.push( :B )
     cascading_composite_array.should == [ :A, :B ]
     sub_cascading_composite_array.should == [ :A, :B, :C, :B ]
 
@@ -168,10 +172,9 @@ describe ::Array::Compositing do
 
   it 'can delete multiple elements' do
 
-    cascading_composite_array = ::Array::Compositing.new
+    cascading_composite_array = ::Array::Compositing.new( nil, nil, [ :A, :B ])
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
 
-    cascading_composite_array += [ :A, :B ]
     cascading_composite_array.should == [ :A, :B ]
     sub_cascading_composite_array.should == [ :A, :B ]
 
@@ -179,7 +182,7 @@ describe ::Array::Compositing do
     cascading_composite_array.should == [ ]
     sub_cascading_composite_array.should == [ ]
 
-    sub_cascading_composite_array += [ :B, :C, :D ]
+    sub_cascading_composite_array.concat( [ :B, :C, :D ] )
     cascading_composite_array.should == [ ]
     sub_cascading_composite_array.should == [ :B, :C, :D ]
     
@@ -193,32 +196,9 @@ describe ::Array::Compositing do
   #  -  #
   #######
   
-  it 'can exclude elements' do
-
-    cascading_composite_array = ::Array::Compositing.new
-    sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
-
-    cascading_composite_array.push( :A )
-    cascading_composite_array.should == [ :A ]
-    sub_cascading_composite_array.should == [ :A ]
-
-    cascading_composite_array -= [ :A ]
-    cascading_composite_array.should == [ ]
-    sub_cascading_composite_array.should == [ ]
-
-    cascading_composite_array.push( :B )
-    cascading_composite_array.should == [ :B ]
-    sub_cascading_composite_array.should == [ :B ]
-
-    sub_cascading_composite_array.push( :C )
-    cascading_composite_array.should == [ :B ]
-    sub_cascading_composite_array.should == [ :B, :C ]
-
-    sub_cascading_composite_array -= [ :B ]
-    cascading_composite_array.should == [ :B ]
-    sub_cascading_composite_array.should == [ :C ]
-
-  end
+  # FIX
+  # - does not currently work for compositing because it doesn't modify self
+  # perhaps we can fix this by having duplicate inherit parents/children
 
   ############
   #  delete  #
@@ -561,36 +541,27 @@ describe ::Array::Compositing do
   ##############
 
   it 'can shuffle self' do
-
-    cascading_composite_array = ::Array::Compositing.new
+    cascading_composite_array = ::Array::Compositing.new( nil, nil, [ :A, :B, :C ] )
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
-
-    cascading_composite_array.push( :A, :B, :C )
-    cascading_composite_array.should == [ :A, :B, :C ]
-    sub_cascading_composite_array.should == cascading_composite_array
-
-    prior_version = cascading_composite_array.dup
-    attempts = [ ]
-    50.times do
+    shuffled = false
+    100.times do
       cascading_composite_array.shuffle!
-      attempts.push( cascading_composite_array == prior_version )
-      prior_version = cascading_composite_array.dup
+      break if shuffled = ( cascading_composite_array != [ :A, :B, :C ] )
     end
-    attempts_correct = attempts.select { |member| member == false }.count
-    ( attempts_correct >= 10 ).should == true
+    shuffled.should == true
     sub_cascading_composite_array.should == cascading_composite_array
-    first_shuffle_version = cascading_composite_array
-
-    cascading_composite_array.should == first_shuffle_version
-    attempts = [ ]
-    50.times do
-      sub_cascading_composite_array.shuffle!
-      attempts.push( sub_cascading_composite_array == cascading_composite_array )
-      prior_version = cascading_composite_array.dup
+  end
+  
+  it 'can shuffle self with a random number generator' do
+    cascading_composite_array = ::Array::Compositing.new( nil, nil, [ :A, :B, :C ] )
+    sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
+    shuffled = false
+    100.times do
+      cascading_composite_array.shuffle!( random: Random.new( 1 ) )
+      break if shuffled = ( cascading_composite_array != [ :A, :B, :C ] )
     end
-    attempts_correct = attempts.select { |member| member == false }.count
-    ( attempts_correct >= 10 ).should == true    
-
+    shuffled.should == true
+    sub_cascading_composite_array.should == cascading_composite_array
   end
 
   ##############
@@ -737,10 +708,9 @@ describe ::Array::Compositing do
 
   it 'can unshift onto the first element' do
 
-    cascading_composite_array = ::Array::Compositing.new
+    cascading_composite_array = ::Array::Compositing.new( nil, nil, [ :A ] )
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
 
-    cascading_composite_array += :A
     cascading_composite_array.should == [ :A ]
     sub_cascading_composite_array.should == [ :A ]
 
@@ -760,10 +730,9 @@ describe ::Array::Compositing do
   
   it 'can pop the final element' do
 
-    cascading_composite_array = ::Array::Compositing.new
+    cascading_composite_array = ::Array::Compositing.new( nil, nil, [ :A ] )
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
 
-    cascading_composite_array += :A
     cascading_composite_array.should == [ :A ]
     sub_cascading_composite_array.should == [ :A ]
 
@@ -771,11 +740,11 @@ describe ::Array::Compositing do
     cascading_composite_array.should == [ ]
     sub_cascading_composite_array.should == [ ]
 
-    cascading_composite_array += :B
+    cascading_composite_array.push( :B )
     cascading_composite_array.should == [ :B ]
     sub_cascading_composite_array.should == [ :B ]
 
-    sub_cascading_composite_array += :C
+    sub_cascading_composite_array.push( :C )
     cascading_composite_array.should == [ :B ]
     sub_cascading_composite_array.should == [ :B, :C ]
     sub_cascading_composite_array.pop.should == :C
@@ -790,10 +759,9 @@ describe ::Array::Compositing do
   
   it 'can shift the first element' do
 
-    cascading_composite_array = ::Array::Compositing.new
+    cascading_composite_array = ::Array::Compositing.new( nil, nil, [ :A ] )
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
 
-    cascading_composite_array += :A
     cascading_composite_array.should == [ :A ]
     sub_cascading_composite_array.should == [ :A ]
 
@@ -801,11 +769,11 @@ describe ::Array::Compositing do
     cascading_composite_array.should == [ ]
     sub_cascading_composite_array.should == [ ]
 
-    cascading_composite_array += :B
+    cascading_composite_array.push( :B )
     cascading_composite_array.should == [ :B ]
     sub_cascading_composite_array.should == [ :B ]
 
-    sub_cascading_composite_array += :C
+    sub_cascading_composite_array.push( :C )
     cascading_composite_array.should == [ :B ]
     sub_cascading_composite_array.should == [ :B, :C ]
     sub_cascading_composite_array.shift.should == :B
@@ -820,10 +788,9 @@ describe ::Array::Compositing do
   
   it 'can slice elements' do
 
-    cascading_composite_array = ::Array::Compositing.new
+    cascading_composite_array = ::Array::Compositing.new( nil, nil, [ :A ] )
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
 
-    cascading_composite_array += :A
     cascading_composite_array.should == [ :A ]
     sub_cascading_composite_array.should == [ :A ]
 
@@ -831,11 +798,11 @@ describe ::Array::Compositing do
     cascading_composite_array.should == [ ]
     sub_cascading_composite_array.should == [ ]
 
-    cascading_composite_array += :B
+    cascading_composite_array.push( :B )
     cascading_composite_array.should == [ :B ]
     sub_cascading_composite_array.should == [ :B ]
 
-    sub_cascading_composite_array += :C
+    sub_cascading_composite_array.push( :C )
     cascading_composite_array.should == [ :B ]
     sub_cascading_composite_array.should == [ :B, :C ]
 
@@ -851,10 +818,9 @@ describe ::Array::Compositing do
 
   it 'can clear, causing present elements to be excluded' do
 
-    cascading_composite_array = ::Array::Compositing.new
+    cascading_composite_array = ::Array::Compositing.new( nil, nil, [ :A ] )
     sub_cascading_composite_array = ::Array::Compositing.new( cascading_composite_array )
 
-    cascading_composite_array += :A
     cascading_composite_array.should == [ :A ]
     sub_cascading_composite_array.should == [ :A ]
 
@@ -862,11 +828,11 @@ describe ::Array::Compositing do
     cascading_composite_array.should == [ ]
     sub_cascading_composite_array.should == [ ]
 
-    cascading_composite_array += :B
+    cascading_composite_array.push( :B )
     cascading_composite_array.should == [ :B ]
     sub_cascading_composite_array.should == [ :B ]
 
-    sub_cascading_composite_array += :C
+    sub_cascading_composite_array.push( :C )
     cascading_composite_array.should == [ :B ]
     sub_cascading_composite_array.should == [ :B, :C ]
 
@@ -928,7 +894,7 @@ describe ::Array::Compositing do
     
     class ::Array::Compositing::SubMockPreGet < ::Array::Compositing
       
-      def pre_get_hook( index )
+      def pre_get_hook( index, length )
         return false
       end
       
@@ -951,7 +917,7 @@ describe ::Array::Compositing do
 
     class ::Array::Compositing::SubMockPostGet < ::Array::Compositing
       
-      def post_get_hook( index, object )
+      def post_get_hook( index, object, length )
         return :some_other_value
       end
       

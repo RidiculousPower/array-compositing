@@ -70,15 +70,11 @@ module ::Array::Compositing::ArrayInterface
   #         Object set.
   #
   cluster( :non_cascading_set ).before_include.cascade_to( :class ) do |hooked_instance|
-    
     hooked_instance.class_eval do
-      
       unless method_defined?( :non_cascading_set )
         alias_method :non_cascading_set, :[]=
       end
-      
     end
-
   end
 
   ##########################
@@ -103,15 +99,11 @@ module ::Array::Compositing::ArrayInterface
   #         Objects inserted.
   #
   cluster( :non_cascading_insert ).before_include.cascade_to( :class ) do |hooked_instance|
-    
     hooked_instance.class_eval do
-      
       unless method_defined?( :non_cascading_insert )
         alias_method :non_cascading_insert, :insert
       end
-
     end
-    
   end
   
   #############################
@@ -132,15 +124,11 @@ module ::Array::Compositing::ArrayInterface
   #         Object set.
   #
   cluster( :non_cascading_delete_at ).before_include.cascade_to( :class ) do |hooked_instance|
-    
     hooked_instance.class_eval do
-      
       unless method_defined?( :non_cascading_delete_at )
         alias_method :non_cascading_delete_at, :delete_at
       end
-      
     end
-    
   end
 
   ###################################  Sub-Array Management  #######################################
@@ -374,6 +362,10 @@ module ::Array::Compositing::ArrayInterface
   #
   #        Instance that initiated set or insert.
   #
+  # @param [Array::Compositing] parent_instance 
+  #
+  #        Instance that initiated set or insert.
+  #
   # @return [true,false] 
   #
   #         Return value is used in place of object.
@@ -490,7 +482,7 @@ module ::Array::Compositing::ArrayInterface
   ############
   
   def to_a
-   puts 'BLAH1'
+
     load_parent_state
    
     super
@@ -502,7 +494,7 @@ module ::Array::Compositing::ArrayInterface
   ############
   
   def to_ary
-   puts 'BLAH2'
+
     load_parent_state
    
     super
