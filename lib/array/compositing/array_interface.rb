@@ -82,11 +82,7 @@ module ::Array::Compositing::ArrayInterface
   #         Object set.
   #
   cluster( :non_cascading_set ).before_include.cascade_to( :class ) do |hooked_instance|
-    hooked_instance.class_eval do
-      unless method_defined?( :non_cascading_set )
-        alias_method :non_cascading_set, :[]=
-      end
-    end
+    hooked_instance.class_eval { alias_method :non_cascading_set, :[]= unless method_defined?( :non_cascading_set ) }
   end
 
   ##########################
@@ -112,9 +108,7 @@ module ::Array::Compositing::ArrayInterface
   #
   cluster( :non_cascading_insert ).before_include.cascade_to( :class ) do |hooked_instance|
     hooked_instance.class_eval do
-      unless method_defined?( :non_cascading_insert )
-        alias_method :non_cascading_insert, :insert
-      end
+      alias_method :non_cascading_insert, :insert unless method_defined?( :non_cascading_insert )
     end
   end
   
@@ -137,9 +131,7 @@ module ::Array::Compositing::ArrayInterface
   #
   cluster( :non_cascading_delete_at ).before_include.cascade_to( :class ) do |hooked_instance|
     hooked_instance.class_eval do
-      unless method_defined?( :non_cascading_delete_at )
-        alias_method :non_cascading_delete_at, :delete_at
-      end
+      alias_method :non_cascading_delete_at, :delete_at unless method_defined?( :non_cascading_delete_at )
     end
   end
 
