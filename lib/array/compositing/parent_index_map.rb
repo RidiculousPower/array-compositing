@@ -790,11 +790,9 @@ class ::Array::Compositing::ParentIndexMap
     if index_offset >= 0
       index = index_offset
     else
-      elements_in_array = @array_instance.size
-      index = ( elements_in_array > 0 ) ? elements_in_array + 1 + index_offset : 0
+      index = ( elements_in_array = @array_instance.size > 0 ) ? elements_in_array + 1 + index_offset : 0
+      index = 0 if index < 0
     end
-  
-    index = 0 if index < 0
     
     return index
     
