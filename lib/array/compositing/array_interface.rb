@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 
 module ::Array::Compositing::ArrayInterface
 
@@ -32,7 +33,7 @@ module ::Array::Compositing::ArrayInterface
 
     super( configuration_instance, *array_initialization_args )
     
-    @parent_index_map = ::Array::Compositing::ParentIndexMap.new
+    @parent_index_map = ::Array::Compositing::ParentIndexMap.new( self )
     
     # arrays from which we inherit
     @parents = ::Array::Compositing::ParentsArray.new
@@ -40,11 +41,22 @@ module ::Array::Compositing::ArrayInterface
     # arrays that inherit from us
     @children = [ ]
 
-    if parent_instance
-      register_parent( parent_instance )
-    end
+    register_parent( parent_instance ) if parent_instance
     
   end
+
+  ######################
+  #  parent_index_map  #
+  ######################
+
+  ###
+  # @!attribute [r]
+  #
+  # @return [Array::Compositing:ParentIndexMap] 
+  #
+  #        The parent index map tracking array instance.
+  #
+  attr_reader :parent_index_map
 
   ###################################  Non-Cascading Behavior  ####################################
 
@@ -158,25 +170,11 @@ module ::Array::Compositing::ArrayInterface
     insert_at_index ||= @parent_index_map.first_index_after_last_parent_element
     
     unless @parents.include?( parent_instance )
-      
-      @parents.push( parent_instance )
-
-      @parent_index_map.register_parent( parent_instance )
-    
-      parent_instance.register_child( self )
-
-      inheriting_element_count = parent_instance.count
-
-      # record in our parent index map that parent has elements that have been inserted      
-      @parent_index_map.parent_insert( parent_instance, 0, inheriting_element_count )
-    
-      # placeholders so we don't have to stub :count, etc.
-      inheriting_element_count.times do |this_time|
-        # we want undecorated because we are just inserting placeholders
-        # hooks are called at lazy-load
-        undecorated_insert( insert_at_index, nil )
-      end    
-    
+      @parents.push( parent_instance.register_child( self ) )
+      @parent_index_map.register_parent( parent_index_map = parent_instance.parent_index_map )
+      # insert placeholders so we don't have to stub :count, etc.
+      # we want undecorated because we are just inserting placeholders, hooks are called at lazy-load
+      parent_instance.size.times { |this_time| undecorated_insert( insert_at_index, nil ) }
     end
     
     return self
@@ -200,7 +198,7 @@ module ::Array::Compositing::ArrayInterface
   #
   def unregister_parent( parent_instance )
     
-    if local_indexes_to_delete = @parent_index_map.unregister_parent( parent_instance )
+    if local_indexes_to_delete = @parent_index_map.unregister_parent( parent_instance.parent_index_map )
       delete_at_indexes( *local_indexes_to_delete )
     end
     
@@ -234,8 +232,7 @@ module ::Array::Compositing::ArrayInterface
   #
   def replace_parent( parent_instance, new_parent_instance  )
     
-    unregister_parent( parent_instance )
-    
+    unregister_parent( parent_instance )    
     register_parent( new_parent_instance )
     
     return self
@@ -548,12 +545,7 @@ module ::Array::Compositing::ArrayInterface
 
     includes = false
     
-    each do |this_member|
-      if this_member.equal?( object ) or this_member == object
-        includes = true 
-        break
-      end
-    end
+    each { |this_member| break if includes = ( this_member.equal?( object ) or this_member == object ) }
 
     return includes
     
@@ -565,15 +557,8 @@ module ::Array::Compositing::ArrayInterface
 
   def []( local_index )
 
-    return_value = nil
-
-    if @parent_index_map.requires_lookup?( local_index )
-      return_value = lazy_set_parent_element_in_self( local_index )
-    else
-      return_value = super
-    end
-
-    return return_value
+    return @parent_index_map.requires_lookup?( local_index ) ? lazy_set_parent_element_in_self( local_index ) 
+                                                             : super
 
   end
 
@@ -585,17 +570,15 @@ module ::Array::Compositing::ArrayInterface
     
     super
 
-    parent_instance = self
-
-    @children.each do |this_sub_array|
-      this_sub_array.instance_eval do
-        update_for_parent_set( parent_instance, local_index, object )
-      end
-    end
+    @children.each { |this_array| this_array.update_for_parent_set( self, local_index, object ) }
 
     return object
 
   end
+
+  ###########
+  #  store  #
+  ###########
   
   alias_method :store, :[]=
 
@@ -606,16 +589,8 @@ module ::Array::Compositing::ArrayInterface
   def delete_at( local_index )
     
     @parent_index_map.local_delete_at( local_index )
-    
     deleted_object = non_cascading_delete_at( local_index )
-
-    parent_instance = self
-
-    @children.each do |this_sub_array|
-      this_sub_array.instance_eval do
-        update_for_parent_delete_at( parent_instance, local_index, deleted_object )
-      end
-    end
+    @children.each { |this_array| this_array.update_for_parent_delete_at( self, local_index, deleted_object ) }
 
     return deleted_object
 
@@ -683,7 +658,7 @@ module ::Array::Compositing::ArrayInterface
       if parent_instance
 
         @parent_index_map.indexes_requiring_lookup.each do |this_local_index, this_parent_struct|
-          if this_parent_struct.parent_instance == parent_instance
+          if this_parent_struct.parent_map.array_instance.equal?( parent_instance )
             lazy_set_parent_element_in_self( this_local_index )
           end
         end
@@ -701,10 +676,6 @@ module ::Array::Compositing::ArrayInterface
     return self
     
   end
-
-  ######################################################################################################################
-      private ##########################################################################################################
-  ######################################################################################################################
 
   ###############################
   #  perform_set_between_hooks  #
@@ -732,13 +703,10 @@ module ::Array::Compositing::ArrayInterface
       
       @parent_index_map.local_insert( local_index, 1 )
       
-      parent_instance = self
-      
-      @children.each do |this_sub_array|
-        this_sub_array.instance_eval do
-          update_for_parent_insert( parent_instance, requested_local_index, local_index, object )
-        end
-      end
+      @children.each { |this_array| this_array.update_for_parent_insert( self, 
+                                                                         requested_local_index, 
+                                                                         local_index, 
+                                                                         object ) }
     
     end
     
@@ -776,7 +744,7 @@ module ::Array::Compositing::ArrayInterface
     if @parent_index_map.requires_lookup?( local_index )
 
       parent_index_struct = @parent_index_map.parent_index( local_index )
-      parent_instance = parent_index_struct.parent_instance
+      parent_instance = parent_index_struct.parent_map.array_instance
           
       case optional_object.count
         when 0
@@ -790,24 +758,21 @@ module ::Array::Compositing::ArrayInterface
       # So we don't want to sort/test uniqueness/etc. We just want to insert at the actual index.
 
       unless @without_child_hooks
-        object = child_pre_set_hook( local_index, object, false, parent_instance )    
+        object = child_pre_set_hook( local_index, object, false, parent_instance )
+        if ::Array::Compositing::DoNotInherit === object
+          delete_at( local_index )
+          return lazy_set_parent_element_in_self( local_index, *optional_object )
+        end
       end
     
-      unless @without_hooks
-        object = pre_set_hook( local_index, object, false )    
-      end
+      object = pre_set_hook( local_index, object, false, 1 ) unless @without_hooks
     
       undecorated_set( local_index, object )
 
       @parent_index_map.looked_up!( local_index )
-
-      unless @without_hooks
-        post_set_hook( local_index, object, false )
-      end
-
-      unless @without_child_hooks
-        child_post_set_hook( local_index, object, false, parent_instance )
-      end
+      
+      post_set_hook( local_index, object, false ) unless @without_hooks
+      child_post_set_hook( local_index, object, false, parent_instance ) unless @without_child_hooks
 
     else
       
@@ -843,19 +808,12 @@ module ::Array::Compositing::ArrayInterface
   #         Self.
   #
   def update_for_parent_set( parent_instance, parent_index, object )
-
-    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_instance, parent_index )
-
-      local_index = @parent_index_map.parent_set( parent_instance, parent_index )
     
+    parent_index_map = parent_instance.parent_index_map
+    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_index_map, parent_index )
+      local_index = @parent_index_map.parent_set( parent_index_map, parent_index )
       undecorated_set( local_index, nil )
-    
-      @children.each do |this_array|
-        this_array.instance_eval do
-          update_for_parent_set( local_index, object )
-        end
-      end
-
+      @children.each { |this_array| this_array.update_for_parent_set( local_index, object ) }
     end
     
     return self
@@ -889,17 +847,9 @@ module ::Array::Compositing::ArrayInterface
   #
   def update_for_parent_insert( parent_instance, requested_parent_index, parent_index, object )
 
-    local_index = @parent_index_map.parent_insert( parent_instance, parent_index, 1 )
-
+    local_index = @parent_index_map.parent_insert( parent_instance.parent_index_map, parent_index, 1 )
     undecorated_insert( local_index, nil )
-
-    parent_instance = self
-
-    @children.each do |this_array|
-      this_array.instance_eval do
-        update_for_parent_insert( parent_instance, local_index, local_index, object )
-      end
-    end
+    @children.each { |this_array| this_array.update_for_parent_insert( self, local_index, local_index, object ) }
 
     return self
     
@@ -931,10 +881,12 @@ module ::Array::Compositing::ArrayInterface
   def update_for_parent_delete_at( parent_instance, parent_index, object )
 
     did_delete = false
-
-    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_instance, parent_index )
+    
+    parent_index_map = parent_instance.parent_index_map
+    
+    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_index_map, parent_index )
       
-      local_index = @parent_index_map.local_index( parent_instance, parent_index )
+      local_index = @parent_index_map.local_index( parent_index_map, parent_index )
       
       if @without_child_hooks
         child_pre_delete_hook_result = true
@@ -944,7 +896,7 @@ module ::Array::Compositing::ArrayInterface
     
       if child_pre_delete_hook_result
 
-        @parent_index_map.parent_delete_at( parent_instance, parent_index )
+        @parent_index_map.parent_delete_at( parent_index_map, parent_index )
 
         # I'm unclear why if we call perform_delete_between_hooks (including through non_cascading_delete_at)
         # we end up smashing the last index's lazy lookup value, turning it false
@@ -957,34 +909,16 @@ module ::Array::Compositing::ArrayInterface
         end
 
         if pre_delete_hook_result
-
-          object = undecorated_delete_at( local_index )
-
           did_delete = true
-
-          unless @without_hooks
-            object = post_delete_hook( local_index, object )
-          end
-
-          unless @without_child_hooks
-            child_post_delete_hook( local_index, object, parent_instance )
-          end
-
-          parent_instance = self
-
-          @children.each do |this_array|
-            this_array.instance_eval do
-              update_for_parent_delete_at( parent_instance, local_index, object )
-            end
-          end
-
+          object = undecorated_delete_at( local_index )
+          object = post_delete_hook( local_index, object ) unless @without_hooks
+          child_post_delete_hook( local_index, object, parent_instance ) unless @without_child_hooks
+          @children.each { |this_array| this_array.update_for_parent_delete_at( self, local_index, object ) }
         end
         
       else
 
-        if @parent_index_map.requires_lookup?( local_index )
-          lazy_set_parent_element_in_self( local_index, object )
-        end
+        lazy_set_parent_element_in_self( local_index, object ) if @parent_index_map.requires_lookup?( local_index )
       
       end
     

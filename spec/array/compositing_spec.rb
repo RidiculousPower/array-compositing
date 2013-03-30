@@ -1,3 +1,4 @@
+# -*- encoding : utf-8 -*-
 
 require_relative '../../lib/array-compositing.rb'
 
@@ -850,7 +851,7 @@ describe ::Array::Compositing do
     
     class ::Array::Compositing::SubMockPreSet < ::Array::Compositing
       
-      def pre_set_hook( index, object, is_insert = false )
+      def pre_set_hook( index, object, is_insert = false, length = nil )
         return :some_other_value
       end
       
@@ -872,7 +873,7 @@ describe ::Array::Compositing do
 
     class ::Array::Compositing::SubMockPostSet < ::Array::Compositing
       
-      def post_set_hook( index, object, is_insert = false )
+      def post_set_hook( index, object, is_insert = false, length = nil )
         return :some_other_value
       end
       
