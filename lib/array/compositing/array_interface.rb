@@ -880,13 +880,7 @@ module ::Array::Compositing::ArrayInterface
       
       local_index = @parent_index_map.local_index( parent_index_map, parent_index )
       
-      if @without_child_hooks
-        child_pre_delete_hook_result = true
-      else
-        child_pre_delete_hook_result = child_pre_delete_hook( local_index, parent_instance )
-      end
-    
-      if child_pre_delete_hook_result
+      if @without_child_hooks || child_pre_delete_hook( local_index, parent_instance )
 
         @parent_index_map.parent_delete_at( parent_index_map, parent_index )
 
@@ -894,13 +888,7 @@ module ::Array::Compositing::ArrayInterface
         # we end up smashing the last index's lazy lookup value, turning it false
         # for now simply adding hooks manually here works; the only loss is a little duplicate code
         # to call the local (non-child) hooks
-        if @without_hooks
-          pre_delete_hook_result = true
-        else
-          pre_delete_hook_result = pre_delete_hook( local_index )
-        end
-
-        if pre_delete_hook_result
+        if @without_hooks || pre_delete_hook( local_index )
           did_delete = true
           object = undecorated_delete_at( local_index )
           object = post_delete_hook( local_index, object ) unless @without_hooks
