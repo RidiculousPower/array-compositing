@@ -690,6 +690,10 @@ class ::Array::Compositing::ParentIndexMap
     parent_delete_at_index = index_for_offset( parent_delete_at_index )
 
     parent_local_map = parent_local_map( parent_map )
+    if parent_delete_at_index > parent_local_map.size
+      puts 'map: ' << parent_local_map.to_s
+      raise 'fucker: ' << parent_delete_at_index.to_s
+    end
 
     # get local index for parent index where delete is occuring
     local_delete_at_index = parent_local_map.delete_at( parent_delete_at_index )

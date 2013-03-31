@@ -191,6 +191,7 @@ module ::Array::Compositing::ArrayInterface
   def unregister_parent( parent_instance )
     
     if local_indexes_to_delete = @parent_index_map.unregister_parent( parent_instance.parent_index_map )
+      puts 'local indexes: ' + local_indexes_to_delete.to_s
       delete_at_indexes( *local_indexes_to_delete )
     end
     
@@ -269,9 +270,7 @@ module ::Array::Compositing::ArrayInterface
   #
   def unregister_child( child_composite_array )
 
-    if index = @children.index { |this_child_array| this_child_array.equal?( child_composite_array ) }
-      @children.delete_at( index )
-    end
+    @children.delete( child_composite_array )
 
     return self
 
