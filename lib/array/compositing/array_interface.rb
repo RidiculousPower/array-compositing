@@ -36,10 +36,10 @@ module ::Array::Compositing::ArrayInterface
     @parent_index_map = ::Array::Compositing::ParentIndexMap.new( self )
     
     # arrays from which we inherit
-    @parents = ::Array::Compositing::ParentsArray.new
+    @parents = ::Array::Compositing::ParentChildArray.new
     
     # arrays that inherit from us
-    @children = [ ]
+    @children = ::Array::Compositing::ParentChildArray.new
 
     register_parent( parent_instance ) if parent_instance
     
@@ -163,7 +163,7 @@ module ::Array::Compositing::ArrayInterface
     
     unless @parents.include?( parent_instance )
       @parents.push( parent_instance.register_child( self ) )
-      @parent_index_map.register_parent( parent_index_map = parent_instance.parent_index_map )
+      @parent_index_map.register_parent( parent_instance.parent_index_map )
       # insert placeholders so we don't have to stub :count, etc.
       # we want undecorated because we are just inserting placeholders, hooks are called at lazy-load
       parent_instance.size.times { |this_time| undecorated_insert( insert_at_index, nil ) }
@@ -269,7 +269,9 @@ module ::Array::Compositing::ArrayInterface
   #
   def unregister_child( child_composite_array )
 
-    @children.delete( child_composite_array )
+    if index = @children.index { |this_child_array| this_child_array.equal?( child_composite_array ) }
+      @children.delete_at( index )
+    end
 
     return self
 
@@ -469,9 +471,9 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
-  ############
+  ##########
   #  to_a  #
-  ############
+  ##########
   
   def to_a
 
@@ -611,9 +613,7 @@ module ::Array::Compositing::ArrayInterface
     else
       
       # unregister with parent composite so we don't get future updates from it
-      @parents.each do |this_parent_instance|
-        this_parent_instance.unregister_child( self )
-      end
+      @parents.each { |this_parent_instance| this_parent_instance.unregister_child( self ) }
       
     end
     
@@ -692,14 +692,11 @@ module ::Array::Compositing::ArrayInterface
   def perform_single_object_insert_between_hooks( requested_local_index, object )
 
     if local_index = super
-      
       @parent_index_map.local_insert( local_index, 1 )
-      
       @children.each { |this_array| this_array.update_for_parent_insert( self, 
                                                                          requested_local_index, 
                                                                          local_index, 
                                                                          object ) }
-    
     end
     
     return local_index

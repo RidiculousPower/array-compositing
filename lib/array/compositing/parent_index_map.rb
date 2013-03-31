@@ -128,18 +128,12 @@ class ::Array::Compositing::ParentIndexMap
     
       # get sorted local indexes
       local_indexes_to_delete = parent_local_map.select do |this_local_index|
-        if this_local_index < 0
-          false
-        else
-          true
-        end
+        ( this_local_index < 0 ) ? false : true
       end.sort.reverse
 
       # for each index, smallest to largest, 
       local_indexes_to_delete.each do |this_local_index|
-      
         @local_parent_map.delete_at( this_local_index )
-      
         # for each index, iterate each parent array, delete and decrement indexes > than index
         @parent_local_maps.each do |this_parent, this_parent_local_map|
           this_parent_local_map.each_with_index do |this_mapped_local_index, this_parent_index|
@@ -148,7 +142,6 @@ class ::Array::Compositing::ParentIndexMap
             end
           end
         end
-      
       end
     
       # note total decrease in parent elements
@@ -215,9 +208,7 @@ class ::Array::Compositing::ParentIndexMap
     # if parent index is greater than interpolated count we have a new parent, so not replaced
     if @first_index_after_last_parent_element == 0
       
-      if @local_parent_map.size > 0
-        replaced = true
-      end
+      replaced = true if @local_parent_map.size > 0
 
     elsif parent_index < @first_index_after_last_parent_element
       
@@ -258,9 +249,7 @@ class ::Array::Compositing::ParentIndexMap
   #
   def replaced_parent_element_with_local_index?( local_index )
     
-    local_index = index_for_offset( local_index )
-    
-    return parent_index( local_index ).nil?
+    return parent_index( index_for_offset( local_index ) ).nil?
     
   end
   
@@ -281,9 +270,7 @@ class ::Array::Compositing::ParentIndexMap
   #
   def requires_lookup?( local_index )
     
-    local_index = index_for_offset( local_index )
-    
-    return @local_index_requires_lookup[ local_index ] || false
+    return @local_index_requires_lookup[ index_for_offset( local_index ) ] || false
     
   end
 
@@ -303,9 +290,7 @@ class ::Array::Compositing::ParentIndexMap
     indexes = [ ]
     
     @local_index_requires_lookup.each_with_index do |true_or_false, this_index|
-      if true_or_false
-        indexes.push( this_index )
-      end
+      indexes.push( this_index ) if true_or_false
     end
     
     return indexes
@@ -329,9 +314,7 @@ class ::Array::Compositing::ParentIndexMap
   #
   def looked_up!( local_index )
     
-    local_index = index_for_offset( local_index )
-
-    @local_index_requires_lookup[ local_index ] = false
+    @local_index_requires_lookup[ index_for_offset( local_index ) ] = false
     
     return self
     
@@ -379,9 +362,7 @@ class ::Array::Compositing::ParentIndexMap
   #
   def local_index( parent_map, parent_index )
     
-    parent_index = index_for_offset( parent_index )
-    
-    if local_index = parent_local_map( parent_map )[ parent_index ] and
+    if local_index = parent_local_map( parent_map )[ index_for_offset( parent_index ) ] and
        local_index < 0
       local_index = 0
     end
@@ -390,6 +371,78 @@ class ::Array::Compositing::ParentIndexMap
     
   end
 
+  ########################################
+  #  parent_insert_without_child_insert  #
+  ########################################
+  
+  ###
+  # Update index information to represent insert in parent instance when insert should not cascade.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which insert is happening.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance for insert.
+  # 
+  # @params [Integer] object_count
+  # 
+  #         Number of elements inserted.
+  # 
+  # @return [Integer] 
+  #
+  #         Parent index where insert took place.
+  #
+  def parent_insert_without_child_insert( parent_map, parent_insert_index, object_count )
+
+    parent_local_map = parent_local_map( parent_map )
+
+    # Insert new parent index correspondences.
+    object_count.times do |this_time|
+      this_parent_index = parent_insert_index + this_time
+      parent_local_map.insert( this_parent_index, -1 )
+    end
+    
+    # Update any correspondences whose parent indexes are above the insert.
+    parent_index_at_end_of_insert = parent_insert_index + object_count
+    remaining_parent_count = parent_local_map.size - parent_index_at_end_of_insert
+    remaining_parent_count.times do |this_time|
+      this_parent_index = parent_index_at_end_of_insert + this_time
+      parent_local_map[ this_parent_index ] += object_count
+    end
+
+    return parent_insert_index
+
+  end
+  
+  ##################################
+  #  parent_set_without_child_set  #
+  ##################################
+
+  ###
+  # Update index information to represent set in parent instance when set should not cascade.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which parent index is being set.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance being queried in local array instance.
+  # 
+  # @return [Integer] 
+  #
+  #         Parent index where insert took place.
+  #
+  def parent_set_without_child_set( parent_map, parent_index )
+
+    parent_local_map( parent_map )[ index_for_offset( parent_index ) ] = -1
+    
+    return parent_index
+
+  end
+  
   ###################
   #  parent_insert  #
   ###################
@@ -428,14 +481,13 @@ class ::Array::Compositing::ParentIndexMap
       local_insert_index = @first_index_after_last_parent_element
     end
     
-    if parent_insert_index > parent_local_map.size
-      raise 'fuck'
-    end
-
     # Insert new parent index correspondences.
     object_count.times do |this_time|
       this_parent_index = parent_insert_index + this_time
       this_local_index = local_insert_index + this_time
+      if this_parent_index > parent_local_map.size
+        raise 'fuck'
+      end
       parent_local_map.insert( this_parent_index, this_local_index )
       parent_index_struct = self.class::ParentIndexStruct.new( parent_map, this_parent_index )
       @local_parent_map.insert( this_local_index, parent_index_struct )
@@ -447,10 +499,6 @@ class ::Array::Compositing::ParentIndexMap
     remaining_parent_count = parent_local_map.size - parent_index_at_end_of_insert
     remaining_parent_count.times do |this_time|
       this_parent_index = parent_index_at_end_of_insert + this_time
-      if parent_local_map[ this_parent_index ].nil?
-        puts 'index: ' << this_parent_index.to_s
-        puts 'parent: ' + parent_local_map.to_s
-      end
       parent_local_map[ this_parent_index ] += object_count
     end
 
@@ -470,8 +518,7 @@ class ::Array::Compositing::ParentIndexMap
 
     remaining_local_count = @local_parent_map.size - local_index_at_end_of_insert
     remaining_local_count.times do |this_time|
-      this_local_index = local_index_at_end_of_insert + this_time
-      if existing_parent_index_struct = @local_parent_map[ this_local_index ]
+      if existing_parent_index_struct = @local_parent_map[ this_local_index = local_index_at_end_of_insert + this_time ]
         existing_parent_index_struct.parent_index += object_count
       end
     end
@@ -584,12 +631,9 @@ class ::Array::Compositing::ParentIndexMap
     # if we are setting an index that already exists then we have a parent to local map - we never delete those
     # except when we delete the parent
     if local_index = parent_local_map( parent_map )[ parent_index ]
-      unless replaced_parent_element_with_local_index?( local_index )
-        @local_index_requires_lookup[ local_index ] = true
-      end
+      @local_index_requires_lookup[ local_index ] = true unless replaced_parent_element_with_local_index?( local_index )
     else
-      local_index = @first_index_after_last_parent_element
-      parent_insert( parent_map, local_index, 1 )
+      local_index = parent_insert( parent_map, parent_index, 1 )
     end
     
     return local_index
@@ -671,18 +715,13 @@ class ::Array::Compositing::ParentIndexMap
       next if this_parent_local_map == parent_local_map
       # need to track how it affects other existing maps
       this_parent_local_map.each_with_index do |this_local_index, this_parent_index|
-        if this_local_index >= local_delete_at_index
-          this_parent_local_map[ this_parent_index ] = this_local_index - 1
-        end
+        this_parent_local_map[ this_parent_index ] = this_local_index - 1 if this_local_index >= local_delete_at_index
       end
     end
 
-    if @first_index_after_last_parent_element > 0
-      @first_index_after_last_parent_element -= 1
-    end
+    @first_index_after_last_parent_element -= 1 if @first_index_after_last_parent_element > 0
     
     # if local => parent is already nil then we've overridden the corresponding index already
-    # (we used to call this "replaced_parents")
     unless @local_parent_map[ local_delete_at_index ].nil?
       @local_parent_map.delete_at( local_delete_at_index )
       @local_index_requires_lookup.delete_at( local_delete_at_index )
@@ -711,11 +750,13 @@ class ::Array::Compositing::ParentIndexMap
 
     local_index = index_for_offset( local_index )
 
+    # remove local index from tracking
     parent_index_struct = @local_parent_map.delete_at( local_index )
     @local_index_requires_lookup.delete_at( local_index )
 
     if inside_parent_elements?( local_index )
-
+      
+      # find struct with parent map info so we can adjust indexes affected by this delete
       # if we don't have a parent index corresponding to this index, find the next one that corresponds
       unless parent_index_struct
         next_local_index = local_index
@@ -790,7 +831,7 @@ class ::Array::Compositing::ParentIndexMap
     if index_offset >= 0
       index = index_offset
     else
-      index = ( elements_in_array = @array_instance.size > 0 ) ? elements_in_array + 1 + index_offset : 0
+      index = ( ( elements_in_array = @array_instance.size ) > 0 ) ? elements_in_array + 1 + index_offset : 0
       index = 0 if index < 0
     end
     
