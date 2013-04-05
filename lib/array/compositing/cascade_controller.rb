@@ -1,0 +1,993 @@
+# -*- encoding : utf-8 -*-
+
+###
+# @private
+#
+# Each compositing array instance has a corresponding parent index map,
+#   which manages internal index correspondence for downward compositing 
+#   of elements from parent to child.
+#
+class ::Array::Compositing::CascadeController
+  
+  ################
+  #  initialize  #
+  ################
+
+  ###
+  # Create a parent index map for a given array instance.
+  #
+  # @param array_instance
+  #
+  #        The array instance for which this parent index map is tracking parent elements.
+  #
+  def initialize( array_instance )
+    
+    @array_instance = array_instance
+    @first_index_after_last_parent_element = 0
+    
+    # track any elements added before we were created
+    untracked_element_count = @array_instance.size
+    local_insert( 0, untracked_element_count ) if untracked_element_count > 0
+    
+  end
+
+  ####################
+  #  array_instance  #
+  ####################
+
+  ###
+  # @!attribute [r]
+  #
+  # @return [Array] 
+  #
+  #        The array instance for which this parent index map is tracking parent elements.
+  #
+  attr_reader :array_instance
+  
+  ###########################################
+  #  first_index_after_last_parent_element  #
+  ###########################################
+
+  ###
+  # @!attribute [r]
+  #
+  # @return [Integer] 
+  #
+  #         Index of first element in local array after all parent elements.
+  #
+  attr_reader :first_index_after_last_parent_element
+  
+  ######################
+  #  parent_local_map  #
+  ######################
+  
+  ###
+  # Get parent to local map for parent instance.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which parent index is being queried.
+  #
+  def parent_local_map( parent_array )
+    
+    return @parent_index_to_local_index_maps ? @parent_index_to_local_index_maps[ parent_array ] : nil
+    
+  end
+
+  ######################
+  #  local_parent_map  #
+  ######################
+  
+  ###
+  # Get parent to local map for parent instance.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which parent index is being queried.
+  #
+  def local_parent_map( parent_array )
+    
+    return @local_index_to_parent_index_maps ? @local_index_to_parent_index_maps[ parent_array ] : nil
+    
+  end
+
+  #######################################
+  #  renumber_local_indexes_for_delete  #
+  #######################################
+  
+  def renumber_local_indexes_for_delete( local_index, count = 1 )
+
+    # renumber any indexes in any parent to local map where local > local_index
+    @parent_index_to_local_index_maps.each do |this_parent_local_map|
+      this_parent_local_map.renumber_mapped_indexes_for_delete( local_index, count )
+    end
+    
+    return self
+
+  end
+
+  #######################################
+  #  renumber_local_indexes_for_insert  #
+  #######################################
+  
+  def renumber_local_indexes_for_insert( local_index, count = 1 )
+
+    # renumber any indexes in any parent to local map where local > local_index
+    @parent_index_to_local_index_maps.each do |this_parent_local_map|
+      this_parent_local_map.renumber_mapped_indexes_for_insert( local_index, count )
+    end
+
+    return self
+
+  end
+
+  #####################
+  #  register_parent  #
+  #####################
+
+  ###
+  # Register a parent to track element inheritance.
+  #
+  # @param [Array::Compositing] parent_map
+  #
+  #        Instance from which instance will inherit elements.
+  #
+  # @return [Array::Compositing::CascadeController] 
+  #
+  #         Self.
+  #
+  def register_parent( parent_array, local_insert_index = -1 )
+    
+    @parent_index_to_local_index_maps ||= { }
+    @local_index_to_parent_index_maps ||= { }
+    @local_index_to_parent_map ||= [ ]
+    @local_index_requires_lookup ||= [ ]
+    
+    parent_local_map = ::Array::Compositing::CascadeController::IndexMap::ParentLocalMap.new
+    local_parent_map = ::Array::Compositing::CascadeController::IndexMap::LocalParentMap.new    
+    @parent_index_to_local_index_maps[ parent_array ] = parent_local_map
+    @local_index_to_parent_index_maps[ parent_array ] = local_parent_map
+    
+    # map each element to corresponding local
+    parent_element_count = parent_array.size
+    if parent_element_count > 0
+      parent_insert( parent_array, local_insert_index, parent_element_count, parent_local_map, local_parent_map )
+    end
+    
+    return self
+    
+  end
+
+  #######################
+  #  unregister_parent  #
+  #######################
+
+  ###
+  # Account for removal of all indexes corresponding to parent and return
+  #   array containing local indexes to be deleted.
+  #
+  # @param [Array::Compositing] parent_map
+  #
+  #        Instance from which instance will inherit elements.
+  #
+  # @return [Array<Integer>] 
+  #
+  #         Array of indexes corresponding to parent elements to be removed 
+  #         from local instance.
+  #
+  def unregister_parent( parent_array )
+  
+    local_indexes_to_delete = nil
+    
+    if @parent_index_to_local_index_maps and 
+       local_indexes_to_delete = @parent_index_to_local_index_maps.delete( parent_array )
+
+      @local_index_to_parent_index_maps.delete( parent_id )
+
+      local_indexes_to_delete.compact!
+      local_indexes_to_delete.sort!
+      local_indexes_to_delete.reverse!
+
+      # delete each index, biggest to smallest
+      local_indexes_to_delete.each do |this_local_index|
+        @local_index_to_parent_map.delete_at( this_local_index )
+        @local_index_requires_lookup.delete_at( this_local_index )
+        renumber_local_indexes_for_delete( this_local_index )
+      end
+
+      # note total decrease in parent elements
+      @first_index_after_last_parent_element -= local_indexes_to_delete.size
+
+    end
+    
+    return local_indexes_to_delete
+
+  end
+  
+  ##################
+  #  parent_array  #
+  ##################
+
+  def parent_array( local_index )
+    
+    return @local_index_to_parent[ local_index ]
+    
+  end
+
+  ##################
+  #  parent_index  #
+  ##################
+  
+  ###
+  # Get parent instance and index corresponding to local index.
+  #
+  # @params [Integer] local_index
+  # 
+  #         Index in local array instance.
+  #
+  # @return [Array::Compositing::CascadeController::ParentIndexStruct] 
+  #
+  #         Struct containing parent instance and index.
+  #
+  def parent_index( local_index, parent_array = parent_array( local_index ), local_parent_map = nil )
+    
+    parent_index = nil
+    
+    if parent_array
+      local_parent_map ||= local_parent_map( parent_array )
+      parent_index = local_parent_map[ local_index ]
+    end
+    
+    return parent_index
+    
+  end
+
+  #################
+  #  local_index  #
+  #################
+  
+  ###
+  # Get local index for parent instance and index.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which parent index is being queried.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance being queried in local array instance.
+  # 
+  # @return [Integer] 
+  #
+  #         Local index.
+  #
+  def local_index( parent_array, parent_index, 
+                   parent_local_map = parent_local_map( parent_array ) )
+    
+    local_index = parent_local_map[ parent_index ]
+    size = @array_instance.size
+    
+    return local_index <= size ? local_index : size
+    
+  end
+
+  ###################################
+  #  parent_controls_parent_index?  #
+  ###################################
+
+  ###
+  # Query whether parent index in parent instance has been replaced in local instance.
+  # 
+  # @params [Array::Compositing] parent_map
+  #
+  #         Parent array instance for which parent index is being queried.
+  #
+  # @params [Integer] parent_index
+  #
+  #         Index in parent array instance being queried in local array instance.
+  #
+  # @return [true,false] 
+  #
+  #         Whether parent index in parent instance has been replaced in local instance.
+  #
+  def parent_controls_parent_index?( parent_array, parent_index, 
+                                     parent_local_map = parent_local_map( parent_array ), 
+                                     local_parent_map = local_parent_map( parent_array ) )
+    
+    local_index = local_index( parent_array, parent_index, parent_local_map, local_parent_map )
+    
+    # when local takes control of a parent index, parent => local index mapping does not cease
+    # instead, we track where it moves so that we can insert at precisely that point later if needed
+    return @local_parent_map[ local_index ].equal?( parent_array ) &&
+           local_index == parent_index( local_index, parent_array, local_parent_map )
+    
+  end
+  
+  ##################################
+  #  parent_controls_local_index?  #
+  ##################################
+
+  ###
+  # Query whether index in local instance has been replaced or created in local instance.
+  # 
+  # @params [Integer] local_index
+  #
+  #         Index in local array instance.
+  #
+  # @return [true,false] 
+  #
+  #         Whether index has been replaced or created in local instance.
+  #
+  def parent_controls_local_index?( local_index, 
+                                    parent_array = parent_array( local_index ), 
+                                    parent_local_map = nil, 
+                                    local_parent_map = nil )
+    
+    parent_controls_local_index = false
+        
+    if parent_array
+      parent_local_map ||= parent_local_map( parent_array )
+      local_parent_map ||= local_parent_map( parent_array )
+      parent_index = parent_index( local_index, parent_array, local_parent_map )
+      parent_controls_local_index = parent_controls_parent_index?( parent_array, 
+                                                                   parent_index, 
+                                                                   parent_local_map, 
+                                                                   local_parent_map )
+    end
+    
+    return parent_controls_local_index
+    
+  end
+  
+  ######################
+  #  requires_lookup?  #
+  ######################
+  
+  ###
+  # Query whether index in local instance requires lookup in a parent instance.
+  # 
+  # @params [Integer] local_index
+  #
+  #         Index in local array instance.
+  #
+  # @return [true,false]
+  #
+  #         Whether lookup is required.
+  #
+  def requires_lookup?( local_index )
+    
+    return @local_index_requires_lookup[ local_index ]
+    
+  end
+
+  ##############################
+  #  indexes_requiring_lookup  #
+  ##############################
+  
+  ###
+  # List of indexes requiring lookup in a parent instance.
+  # 
+  # @return [Array<Integer>]
+  #
+  #         list of indexes requiring lookup in a parent instance.
+  #
+  def indexes_requiring_lookup
+    
+    indexes = [ ]
+    
+    @local_index_requires_lookup.each_with_index do |true_or_false, this_index|
+      indexes.push( this_index ) if true_or_false
+    end
+    
+    return indexes
+    
+  end
+  
+  ################
+  #  looked_up!  #
+  ################
+  
+  ###
+  # Declare that local index has been looked up.
+  #
+  # @params [Integer] local_index
+  # 
+  #         Index in local array instance.
+  # 
+  # @return [self] 
+  #
+  #         Self.
+  #
+  def looked_up!( local_index )
+    
+    @local_index_requires_lookup[ local_index ] = false
+    
+    return self
+    
+  end
+
+  ########################################
+  #  parent_insert_without_child_insert  #
+  ########################################
+  
+  ###
+  # Update index information to represent insert in parent instance when insert should not cascade.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which insert is happening.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance for insert.
+  # 
+  # @params [Integer] count
+  # 
+  #         Number of elements inserted.
+  # 
+  # @return [Integer] 
+  #
+  #         Parent index where insert took place.
+  #
+  def parent_insert_without_child_insert( parent_array, parent_index, count, 
+                                          parent_local_map = parent_local_map( parent_array ), 
+                                          local_parent_map = local_parent_map( parent_array ) )
+    
+    # Insert new parent index correspondences.
+    parent_index = index_for_offset( parent_index )
+    count.times { |this_time| parent_local_map.insert( parent_index + this_time, nil ) }
+    
+    # Update any correspondences whose parent indexes are above the insert.
+    local_parent_map.renumber_mapped_indexes_for_insert( parent_index, count )
+
+    return parent_index
+
+  end
+  
+  ###################
+  #  parent_insert  #
+  ###################
+  
+  ###
+  # Update index information to represent insert in parent instance.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which insert is happening.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance for insert.
+  # 
+  # @params [Integer] count
+  # 
+  #         Number of elements inserted.
+  # 
+  # @return [Integer] 
+  #
+  #         Local index where insert took place.
+  #
+  def parent_insert( parent_array, parent_index, count, 
+                     parent_local_map = parent_local_map( parent_array ), 
+                     local_parent_map = local_parent_map( parent_array ) )
+
+    # We track parent location in locals even after local idex has been replaced.
+    # This permits inserts before a given parent index to be mapped to the appropriate location in local.
+    #
+    # For example:
+    # * parent [ 0, 1, 2, 3, 4 ]
+    # * child inserts A, B, C as [ 0, 1, A, 2, B, C, 3, 4 ] (parent index 2 => child index 3)
+    # * child delete parent index 2 and 3 (child [0, 1, A, B, C, 4]) (parent index 2 => child index 3)
+    # * parent inserts at 2 (parent [ 0, 1, i, 2, 3, 4 ])
+    #   => child inserts at location where 2 would have been (parent index 2 => child index 3)
+    #   => child [0, 1, A, i, B, C, 4]
+
+    parent_index = index_for_offset( parent_index )
+    
+    # renumber parent indexes for insert
+    local_parent_map.collect! { |this_parent_index| this_parent_index > parent_index ? this_parent_index + count 
+                                                                                     : this_parent_index }
+    local_index = local_index( parent_array, parent_index, parent_local_map )
+    # renumber all local indexes for insert
+    renumber_local_indexes_for_insert( local_index, count )
+    
+    count.times do |this_time|
+      # insert requires lookup for each new local index
+      @local_index_requires_lookup.insert( this_local_index = local_index + this_time, true )
+      # insert parent instance for each new local index
+      @local_index_to_parent.insert( this_local_index, parent_array )
+      # insert local index for parent index
+      parent_local_map.insert( this_parent_index = parent_index + this_time, this_local_index )
+      # insert parent index for local index
+      local_parent_map.insert( this_local_index, this_parent_index )
+    end
+
+    return local_index
+
+  end
+  
+  ##################
+  #  local_insert  #
+  ##################
+
+  ###
+  # Update index information to represent insert in local instance.
+  #
+  # @params [Integer] local_index
+  # 
+  #         Local insert index.
+  # 
+  # @params [Integer] count
+  # 
+  #         Number of elements inserted.
+  # 
+  # @return [Integer] 
+  #
+  #         Local index where insert took place.
+  #
+  def local_insert( local_index, count )
+
+    # renumber all local indexes for insert
+    renumber_local_indexes_for_insert( local_index, count )
+    
+    count.times do |this_time|
+      # insert no lookup required for each new local index
+      @local_index_requires_lookup.insert( this_local_index = local_index + this_time, false )
+      # insert nil parent instance for each new local index
+      @local_index_to_parent.insert( this_local_index, nil )
+      # insert nil parent index for local index
+      local_parent_map.insert( this_local_index, nil )
+    end
+
+    return local_index
+    
+  end
+  
+  ##################################
+  #  parent_set_without_child_set  #
+  ##################################
+
+  ###
+  # Update index information to represent set in parent instance when set should not cascade.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which parent index is being set.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance being queried in local array instance.
+  # 
+  # @return [Integer] 
+  #
+  #         Parent index where insert took place.
+  #
+  def parent_set_without_child_set( parent_array, parent_index, 
+                                    parent_local_map = parent_local_map( parent_array ) )
+    
+    parent_index = index_for_offset( parent_index )
+    
+    if parent_index < parent_local_map.size
+      parent_local_map[ parent_index ] = nil    
+    else
+      parent_insert_without_child_insert( parent_array, parent_index, 1, parent_local_map )
+    end
+    
+    return parent_index
+
+  end
+  
+  ################
+  #  parent_set  #
+  ################
+
+  ###
+  # Update index information to represent set in parent instance.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which parent index is being set.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance being queried in local array instance.
+  # 
+  # @return [Integer] 
+  #
+  #         Local index where insert took place.
+  #
+  def parent_set( parent_array, parent_index, 
+                  parent_local_map = parent_local_map( parent_array ), 
+                  local_parent_map = local_parent_map( parent_array ) )
+    
+    local_index = nil
+    
+    parent_local_map ||= parent_local_map( parent_array )
+    local_parent_map ||= local_parent_map( parent_array )
+    
+    parent_index = index_for_offset( parent_index )
+    
+    # if we already have a local index we are replacing
+    if parent_controls_parent_index?( parent_array, parent_index, parent_local_map, local_parent_map )
+      local_index = local_index( parent_array, parent_index, parent_local_map )
+      @local_index_requires_lookup[ local_index ] = true 
+    # otherwise we are inserting
+    else
+      local_index = parent_insert( parent_array, parent_index, 1, parent_local_map, local_parent_map )
+    end
+
+    return local_index
+    
+  end
+
+  ###############
+  #  local_set  #
+  ###############
+  
+  ###
+  # Update index information to represent insert in local instance.
+  #
+  # @params [Integer] local_index
+  # 
+  #         Local index for set.
+  # 
+  # @return [Integer] 
+  #
+  #         Local index where insert took place.
+  #
+  def local_set( local_index )
+    
+    local_index = index_for_offset( local_index )
+    
+    if local_index < @array_instance.size
+      local_index = local_insert( local_index, 1 )
+    elsif parent_array = @local_index_to_parent[ local_index ]
+      local_parent_map = local_parent_map( parent_array )
+      parent_index = local_parent_map[ local_index ]
+      local_parent_map[ local_index ] = nil
+      @local_index_to_parent[ local_index ] = nil
+      @local_index_requires_lookup[ local_index ] = false
+    end
+
+    return local_index
+    
+  end
+
+  ######################
+  #  parent_delete_at  #
+  ######################
+
+  ###
+  # Update index information to represent set in parent instance.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which delete is happening.
+  # 
+  # @params [Integer] parent_index
+  # 
+  #         Index in parent array instance for delete in local array instance.
+  # 
+  # @return [Integer] 
+  #
+  #         Local index where insert took place.
+  #
+  def parent_delete_at( parent_array, parent_index, 
+                        parent_local_map = parent_local_map( parent_array ), 
+                        local_parent_map = local_parent_map( parent_array ) )
+    
+    local_index = nil
+    
+    if parent_controls_parent_index?( parent_array, parent_index, parent_local_map, local_parent_map )
+      local_index = parent_local_map.delete_at( parent_index )
+      local_parent_map.delete_at( local_index )
+      @local_index_requires_lookup.delete_at( local_index )
+      renumber_local_indexes_for_delete( local_index )
+    end
+
+    # renumber any indexes in local to parent map where parent > parent_index
+    local_parent_map.renumber_mapped_indexes_for_delete( parent_index )
+
+    return local_index
+    
+  end
+
+  #####################
+  #  local_delete_at  #
+  #####################
+  
+  ###
+  # Update index information to represent delete in local instance.
+  #
+  # @params [Integer] local_index
+  # 
+  #         Local index for delete.
+  # 
+  # @return [Integer] 
+  #
+  #         Local index where delete took place.
+  #
+  def local_delete_at( local_index )
+    
+    if parent_array = @local_index_to_parent[ local_index = index_for_offset( local_index ) ]
+      @local_index_to_parent[ local_index ] = nil
+      local_parent_map = local_parent_map( parent_array )
+      parent_index = parent_index( local_index, parent_array, local_parent_map )
+      local_parent_map[ local_index ] = nil
+    end
+    
+    renumber_local_indexes_for_delete( local_index )
+
+    return local_index
+    
+  end
+
+  ###################
+  #  local_shuffle  #
+  ###################
+  
+  def local_shuffle
+    
+    shuffled_local_indexes = [ ]
+    @array_instance.size.times { |this_time| shuffled_local_indexes.push( this_time ) }
+    
+    local_reorder( shuffled_local_indexes )
+    
+    return shuffled_local_indexes
+    
+  end
+
+  ####################
+  #  parent_reorder  #
+  ####################
+  
+  def parent_reorder( parent_array, new_parent_order, 
+                      parent_local_map = parent_local_map( parent_array ),
+                      local_parent_map = local_parent_map( parent_array ) )
+
+    new_local_order = [ ]
+    
+    # clear the parent => local map - it doesn't know which parent indices are in local
+    parent_local_map.clear
+    
+    # construct new local order and translate parent index in both directions
+    # we keep local the same for now, so we end up with new parent and existing local
+    local_parent_map.each_with_index do |this_existing_parent_index, this_existing_local_index|
+      this_new_parent_index = new_parent_order[ this_existing_parent_index ]
+      parent_local_map[ this_new_parent_index ] = this_existing_local_index
+      local_parent_map[ this_existing_local_index ] = this_new_parent_index
+    end
+    
+    # interpolate locals belonging to parent (being re-ordered) with others (no change)
+    # this ends up with, for example: [ nil, nil, local for parent1, nil, local for parent2, ... ]
+    # where indexes 0, 1, 3 are controlled locally or by a different parent, so do not move
+    local_parent_map.each do |this_new_parent_index|
+      new_local_order.push( this_new_parent_index ? parent_local_map[ this_new_parent_index ] : nil )
+    end
+    
+    # now update references to existing indexes
+    parent_local_map.each_with_index do |this_existing_local_index, this_new_parent_index|
+      if this_existing_local_index
+        this_new_local_index = new_local_order[ this_existing_local_index ]
+        parent_local_map[ this_new_parent_index ] = this_new_local_index
+        local_parent_map[ this_new_local_index ] = this_new_parent_index
+        @local_index_to_parent[ this_new_local_index ] = parent_array
+      end
+    end
+    
+    # finally ensure all parent => local entries have local index values
+    parent_local_map.ensure_no_nil_local_indexes( @array_instance.size )
+    
+    return new_local_order
+        
+  end
+
+  ###################
+  #  local_reorder  #
+  ###################
+  
+  def local_reorder( new_local_order )
+    
+    existing_local_to_parent = [ ]
+    
+    # for each local we update the parent => local map to the new local index
+    @local_index_to_parent.each_with_index do |this_parent_array, this_existing_local_index|
+      this_existing_parent_index = parent_index( this_parent_array, this_existing_local_index )
+      existing_local_to_parent[ this_existing_local_index ] = this_existing_parent_index
+      this_new_local_index = new_local_order[ this_existing_local_index ]
+      parent_local_map( this_parent_array )[ this_existing_parent_index ] = this_new_local_index
+    end
+
+    # then we clear the local to parent maps
+    @local_index_to_parent_index_maps.each { |this_parent_array, this_local_parent_map| this_local_parent_map.clear }
+
+    # then we iterate local again and ask each parent for its local
+    @local_index_to_parent.each_with_index do |this_parent_array, this_existing_local_index|
+      this_new_local_index = new_local_order[ this_existing_local_index ]
+      this_existing_parent_index = existing_local_to_parent[ this_existing_local_index ]
+      local_parent_map( this_parent_array )[ this_new_local_index ] = this_existing_parent_index
+    end
+    
+    # reuse our array to reorder @local_index_to_parent
+    new_local_index_to_parent_array = existing_local_to_parent
+    new_local_order.each_with_index do |this_new_local_index, this_existing_local_index|
+      this_parent_array = @local_index_to_parent[ this_existing_local_index ]
+      new_local_index_to_parent_array[ this_new_local_index ] = this_parent_array
+    end
+    @local_index_to_parent.replace( new_local_index_to_parent_array )
+    
+    @parent_index_to_local_index_maps.each do |this_parent_array, this_parent_local_map|
+      # finally ensure all parent => local entries have local index values
+      this_parent_local_map.ensure_no_nil_local_indexes( @array_instance.size )
+    end
+    
+    return new_local_order
+    
+  end
+
+  #################
+  #  parent_move  #
+  #################
+  
+  def parent_move( parent_array, existing_parent_index, new_parent_index, 
+                   parent_local_map = parent_local_map( parent_array ),
+                   local_parent_map = local_parent_map( parent_array ) )
+    
+    # if we're asked to move in place we don't need to do anything
+    unless new_parent_index == existing_parent_index
+
+      # move in parent => local
+      parent_local_map.insert( new_parent_index, parent_local_map.delete_at( existing_parent_index ) )
+
+      # if parent doesn't control then we don't have to track in local maps
+      if parent_controls_parent_index?( parent_array, existing_parent_index, parent_local_map, local_parent_map )
+        # get current local index
+        existing_local_index = local_index( parent_array, existing_parent_index, parent_local_map )
+        # move in local => parent
+        local_parent_map[ existing_local_index ] = new_parent_index
+        # modify range between existing and new indexes
+        local_parent_map.move( existing_parent_index, new_parent_index )
+      end
+    
+    end
+    
+    return new_parent_index
+    
+  end
+  
+  ################
+  #  local_move  #
+  ################
+  
+  def local_move( existing_local_index, new_local_index )
+    
+    # if we're asked to move in place we don't need to do anything
+    unless new_local_index == existing_local_index
+
+      if parent_array = @local_index_to_parent[ existing_local_index ]
+        parent_local_map = parent_local_map( parent_array )
+        local_parent_map = local_parent_map( parent_array )
+        # move in parent => local
+        this_existing_parent_index = local_parent_map[ existing_local_index ]
+        parent_local_map[ this_existing_parent_index ] = new_local_index
+        # move in local => parent
+        local_parent_map.insert( new_local_index, local_parent_map.delete_at( existing_local_index ) )
+        # modify range between existing and new indexes
+        parent_local_map.move( existing_local_index, new_local_index )
+      end
+
+      @local_index_to_parent.insert( new_local_index, @local_index_to_parent.delete_at( existing_local_index ) )
+    
+    end
+    
+    return new_local_index
+    
+  end
+
+  #################
+  #  parent_swap  #
+  #################
+
+  def parent_swap( parent_array, parent_index_one, parent_index_two, 
+                   parent_local_map = parent_local_map( parent_array ),
+                   local_parent_map = local_parent_map( parent_array ) )
+    
+    unless parent_index_one == parent_index_two
+
+      # swap in parent => local
+      parent_local_map.swap( parent_index_one, parent_index_two )
+      
+      # check whether parent controls either/both of indexes in local
+      parent_controls_one = parent_controls_parent_index?( parent_array, parent_index_one, 
+                                                           parent_local_map, local_parent_map )
+      parent_controls_two = parent_controls_parent_index?( parent_array, parent_index_two, 
+                                                           parent_local_map, local_parent_map )
+      
+      # 1. parent controls both
+      if parent_controls_one and parent_controls_two
+
+        local_index_one = parent_local_map[ parent_index_one ]
+        local_index_two = parent_local_map[ parent_index_two ]
+        # swap in local => parent
+        local_parent_map.swap( local_index_one, local_index_two )
+      
+      # 2. parent controls index one
+      elsif parent_controls_one
+        
+        local_parent_map[ local_index_one ] = parent_index_two
+      
+      # 3. parent controls index two
+      elsif parent_controls_two
+
+        local_parent_map[ local_index_two ] = parent_index_one
+
+      end
+            
+    end
+    
+    return self
+    
+  end
+
+  ################
+  #  local_swap  #
+  ################
+
+  def local_swap( local_index_one, local_index_two )
+    
+    unless local_index_one == local_index_two
+      
+      # swap in local to array      
+      parent_array_one = @local_index_to_parent[ local_index_one ]
+      parent_array_two = @local_index_to_parent[ local_index_two ]
+      @local_index_to_parent[ local_index_one ] = parent_array_two
+      @local_index_to_parent[ local_index_two ] = parent_array_one
+      
+      # if both local indexes have parents
+      if parent_array_one and parent_array_two
+        
+        local_parent_map_one = local_parent_map( parent_array_one )
+        parent_local_map_one = parent_local_map( parent_array_one )
+        parent_index_one = local_parent_map_one[ local_index_one ]
+        # if same parent, swap in parent
+        if parent_array_one.equal?( parent_array_two )
+         local_parent_map_one.swap( local_index_one, local_index_two )
+          parent_index_two = local_parent_map_one[ local_index_two ]
+          parent_local_map_one.swap( parent_index_one, parent_index_two )
+        # otherwise change ref in each parent
+        else
+          local_parent_map_two = local_parent_map( parent_array_two )
+          parent_local_map_two = parent_local_map( parent_array_two )
+          parent_index_two = local_parent_map_two[ local_index_two ]
+          local_parent_map_one.swap( local_index_one, local_index_two )
+          local_parent_map_two.swap( local_index_one, local_index_two )
+          parent_local_map_two[ parent_index_one ] = local_index_two
+          parent_local_map_two[ parent_index_two ] = local_index_one
+        end
+
+      # if only index one has parent
+      elsif parent_array_one
+
+        local_parent_map_one = local_parent_map( parent_array_one )
+        parent_local_map_one = parent_local_map( parent_array_one )
+        local_parent_map_one.swap( local_index_one, local_index_two )
+        parent_index_one = local_parent_map_one[ local_index_one ]
+        parent_local_map_one[ parent_index_one ] = local_index_two
+
+      # if only index two has parent
+      elsif parent_array_two
+
+        local_parent_map_two = local_parent_map( parent_array_two )
+        parent_local_map_two = parent_local_map( parent_array_two )
+        parent_index_two = local_parent_map_two[ local_index_two ]
+        parent_local_map_two[ parent_index_two ] = local_index_one
+
+      end
+        
+    end
+    
+    return self
+    
+  end
+  
+end

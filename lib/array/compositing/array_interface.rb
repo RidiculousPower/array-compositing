@@ -15,9 +15,9 @@ module ::Array::Compositing::ArrayInterface
   ################
   
   ###
-  # @overload initialize( parent_instance, configuration_instance, array_initialization_arg, ... )
+  # @overload initialize( parent_array, configuration_instance, array_initialization_arg, ... )
   #
-  #   @param [Array::Compositing] parent_instance
+  #   @param [Array::Compositing] parent_array
   #   
   #          Instance from which instance will inherit elements.
   #   
@@ -29,19 +29,19 @@ module ::Array::Compositing::ArrayInterface
   #   
   #          Arguments passed to Array#initialize.
   #
-  def initialize( parent_instance = nil, configuration_instance = nil, *array_initialization_args )
+  def initialize( parent_array = nil, configuration_instance = nil, *array_initialization_args )
 
     super( configuration_instance, *array_initialization_args )
     
-    @parent_index_map = ::Array::Compositing::ParentIndexMap.new( self )
+    @parent_index_map = ::Array::Compositing::CascadeController.new( self )
     
     # arrays from which we inherit
-    @parents = ::Array::Compositing::ParentChildArray.new
+    @parents = ::Array::Compositing::CascadeController::ParentChildArray.new
     
     # arrays that inherit from us
-    @children = ::Array::Compositing::ParentChildArray.new
+    @children = ::Array::Compositing::CascadeController::ParentChildArray.new
 
-    register_parent( parent_instance ) if parent_instance
+    register_parent( parent_array ) if parent_array
     
   end
 
@@ -52,7 +52,7 @@ module ::Array::Compositing::ArrayInterface
   ###
   # @!attribute [r]
   #
-  # @return [Array::Compositing:ParentIndexMap] 
+  # @return [Array::Compositing:CascadeController] 
   #
   #        The parent index map tracking array instance.
   #
@@ -144,7 +144,7 @@ module ::Array::Compositing::ArrayInterface
   ###
   # Register a parent for element inheritance.
   #
-  # @param [Array::Compositing] parent_instance
+  # @param [Array::Compositing] parent_array
   #
   #        Instance from which instance will inherit elements.
   #
@@ -157,16 +157,16 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def register_parent( parent_instance, insert_at_index = nil )
+  def register_parent( parent_array, insert_at_index = nil )
     
     insert_at_index ||= @parent_index_map.first_index_after_last_parent_element
     
-    unless @parents.include?( parent_instance )
-      @parents.push( parent_instance.register_child( self ) )
-      @parent_index_map.register_parent( parent_instance.parent_index_map )
+    unless @parents.include?( parent_array )
+      @parents.push( parent_array.register_child( self ) )
+      @parent_index_map.register_parent( parent_array.parent_index_map )
       # insert placeholders so we don't have to stub :count, etc.
       # we want undecorated because we are just inserting placeholders, hooks are called at lazy-load
-      parent_instance.size.times { |this_time| undecorated_insert( insert_at_index, nil ) }
+      parent_array.size.times { |this_time| undecorated_insert( insert_at_index, nil ) }
     end
     
     return self
@@ -180,7 +180,7 @@ module ::Array::Compositing::ArrayInterface
   ###
   # Unregister a parent for element inheritance and remove all associated elements.
   #
-  # @param [Array::Compositing] parent_instance
+  # @param [Array::Compositing] parent_array
   #
   #        Instance from which instance will inherit elements.
   #
@@ -188,15 +188,15 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def unregister_parent( parent_instance )
+  def unregister_parent( parent_array )
     
-    if local_indexes_to_delete = @parent_index_map.unregister_parent( parent_instance.parent_index_map )
+    if local_indexes_to_delete = @parent_index_map.unregister_parent( parent_array.parent_index_map )
       puts 'local indexes: ' + local_indexes_to_delete.to_s
       delete_at_indexes( *local_indexes_to_delete )
     end
     
-    @parents.delete( parent_instance )
-    parent_instance.unregister_child( self )
+    @parents.delete( parent_array )
+    parent_array.unregister_child( self )
 
     return self
     
@@ -211,11 +211,11 @@ module ::Array::Compositing::ArrayInterface
   #   removing all associated elements of the existing parent and adding those
   #   from the new parent.
   #
-  # @param [Array::Compositing] parent_instance
+  # @param [Array::Compositing] parent_array
   #
   #        Existing instance from which instance is inheriting elements.
   #
-  # @param [Array::Compositing] parent_instance
+  # @param [Array::Compositing] parent_array
   #
   #        New instance from which instance will inherit elements instead.
   #
@@ -223,10 +223,10 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def replace_parent( parent_instance, new_parent_instance  )
+  def replace_parent( parent_array, new_parent_array  )
     
-    unregister_parent( parent_instance )    
-    register_parent( new_parent_instance )
+    unregister_parent( parent_array )    
+    register_parent( new_parent_array )
     
     return self
     
@@ -308,24 +308,24 @@ module ::Array::Compositing::ArrayInterface
   #
   attr_reader :parents
 
-  #################
+  ################
   #  is_parent?  #
-  #################
+  ################
   
   ###
   # Query whether instance has instance as a parent instance from which it inherits elements.
   #
-  # @params [Array::Compositing] potential_parent_instance
+  # @params [Array::Compositing] potential_parent_array
   # 
   #         Instance being queried.
   # 
   # @return [true,false] 
   #
-  #         Whether potential_parent_instance is a parent of instance.
+  #         Whether potential_parent_array is a parent of instance.
   #
-  def is_parent?( potential_parent_instance )
+  def is_parent?( potential_parent_array )
     
-    return @parents.include?( potential_parent_instance )
+    return @parents.include?( potential_parent_array )
     
   end
 
@@ -351,11 +351,11 @@ module ::Array::Compositing::ArrayInterface
   #
   #        Whether this set or insert is inserting a new index.
   #
-  # @param [Array::Compositing] parent_instance 
+  # @param [Array::Compositing] parent_array 
   #
   #        Instance that initiated set or insert.
   #
-  # @param [Array::Compositing] parent_instance 
+  # @param [Array::Compositing] parent_array 
   #
   #        Instance that initiated set or insert.
   #
@@ -363,7 +363,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Return value is used in place of object.
   #
-  def child_pre_set_hook( index, object, is_insert = false, parent_instance = nil )
+  def child_pre_set_hook( index, object, is_insert = false, parent_array = nil )
 
     return object
     
@@ -388,13 +388,13 @@ module ::Array::Compositing::ArrayInterface
   #
   #        Whether this set or insert is inserting a new index.
   #
-  # @param [Array::Compositing] parent_instance 
+  # @param [Array::Compositing] parent_array 
   #
   #        Instance that initiated set or insert.
   #
   # @return [Object] Ignored.
   #
-  def child_post_set_hook( index, object, is_insert = false, parent_instance = nil )
+  def child_post_set_hook( index, object, is_insert = false, parent_array = nil )
     
     return object
     
@@ -412,7 +412,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #        Index at which delete is taking place.
   #
-  # @param [Array::Compositing] parent_instance 
+  # @param [Array::Compositing] parent_array 
   #
   #        Instance that initiated delete.
   #
@@ -420,7 +420,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         If return value is false, delete does not occur.
   #
-  def child_pre_delete_hook( index, parent_instance = nil )
+  def child_pre_delete_hook( index, parent_array = nil )
     
     # false means delete does not take place
     return true
@@ -442,7 +442,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #        Element deleted.
   #
-  # @param [Array::Compositing] parent_instance 
+  # @param [Array::Compositing] parent_array 
   #
   #        Instance that initiated delete.
   #
@@ -450,7 +450,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Object returned in place of delete result.
   #
-  def child_post_delete_hook( index, object, parent_instance = nil )
+  def child_post_delete_hook( index, object, parent_array = nil )
     
     return object
     
@@ -589,6 +589,77 @@ module ::Array::Compositing::ArrayInterface
 
   end
 
+  ##############
+  #  shuffle!  #
+  ##############
+  
+  def shuffle!( random_number_generator = nil )
+    
+    # We can't simply shuffle the internal array (like Array::Hooked) because the index maps will be corrupted. 
+    # We can declare elements have moved, but to do so we need to know where they moved.
+    # To achieve this, we shuffle an array of our indexes and then use the result to track shuffled elements.
+    shuffled_index_order = @parent_index_map.shuffle( random: random_number_generator )
+    
+    existing_data = @internal_array.dup
+    new_order_index_array.each_with_index do |this_new_index, this_existing_index|
+      @internal_array[ this_new_index ] = reorder_array[ existing_data ]
+    end
+    
+    return self
+    
+  end
+
+  #############
+  #  reorder  #
+  #############
+  
+  def reorder( new_order_index_array )
+    
+    @parent_index_map.reorder( new_order_index_array )
+
+    existing_data = @internal_array.dup
+    new_order_index_array.each_with_index do |this_new_index, this_existing_index|
+      @internal_array[ this_new_index ] = reorder_array[ existing_data ]
+    end
+    
+    return self
+        
+  end
+  
+  ##########
+  #  move  #
+  ##########
+  
+  def move( index, new_index )
+    
+    @parent_index_map.local_move( index, new_index )
+    
+    @internal_array[ new_index ] = object_to_move
+    
+    @children.each { |this_child| this_child.update_for_parent_move( index, new_index ) }
+    
+    return self
+    
+  end
+
+  ##########
+  #  swap  #
+  ##########
+  
+  def swap( index_one, index_two )
+    
+    @parent_index_map.local_swap( index_one, index_two )
+    
+    index_two_object = @internal_array[ index_two ]
+    @internal_array[ index_two ] = @internal_array[ index_one ]
+    @internal_array[ index_one ] = index_two_object
+    
+    @children.each { |this_child| this_child.update_for_parent_swap( index_one, index_two ) }
+    
+    return self
+    
+  end
+  
   #############
   #  freeze!  #
   #############
@@ -600,19 +671,19 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def freeze!( parent_instance = nil )
+  def freeze!( parent_array = nil )
     
     # look up all values
-    load_parent_state( parent_instance )
+    load_parent_state( parent_array )
     
-    if parent_instance
+    if parent_array
       
-      parent_instance.unregister_child( self )
+      parent_array.unregister_child( self )
       
     else
       
       # unregister with parent composite so we don't get future updates from it
-      @parents.each { |this_parent_instance| this_parent_instance.unregister_child( self ) }
+      @parents.each { |this_parent_array| this_parent_array.unregister_child( self ) }
       
     end
     
@@ -627,7 +698,7 @@ module ::Array::Compositing::ArrayInterface
   ###
   # Load all elements not yet inherited from parent or parents (but marked to be inherited).
   #
-  # @param [Array::Compositing] parent_instance
+  # @param [Array::Compositing] parent_array
   #
   #        Load state only from parent instance if specified.
   #        Otherwise all parent's state will be loaded.
@@ -636,7 +707,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def load_parent_state( parent_instance = nil )
+  def load_parent_state( parent_array = nil )
 
     #
     # We have to check for @parent_index_map.
@@ -646,10 +717,10 @@ module ::Array::Compositing::ArrayInterface
     #
     if @parent_index_map
     
-      if parent_instance
+      if parent_array
 
         @parent_index_map.indexes_requiring_lookup.each do |this_local_index, this_parent_struct|
-          if this_parent_struct.parent_map.array_instance.equal?( parent_instance )
+          if this_parent_struct.parent_map.array_instance.equal?( parent_array )
             lazy_set_parent_element_in_self( this_local_index )
           end
         end
@@ -732,11 +803,11 @@ module ::Array::Compositing::ArrayInterface
     if @parent_index_map.requires_lookup?( local_index )
 
       parent_index_struct = @parent_index_map.parent_index( local_index )
-      parent_instance = parent_index_struct.parent_map.array_instance
+      parent_array = parent_index_struct.parent_map.array_instance
           
       case optional_object.count
         when 0
-          object = parent_instance[ parent_index_struct.parent_index ]
+          object = parent_array[ parent_index_struct.parent_index ]
         when 1
           object = optional_object[ 0 ]
       end
@@ -746,7 +817,7 @@ module ::Array::Compositing::ArrayInterface
       # So we don't want to sort/test uniqueness/etc. We just want to insert at the actual index.
 
       unless @without_child_hooks
-        object = child_pre_set_hook( local_index, object, false, parent_instance )
+        object = child_pre_set_hook( local_index, object, false, parent_array )
         if ::Array::Compositing::DoNotInherit === object
           delete_at( local_index )
           return lazy_set_parent_element_in_self( local_index, *optional_object )
@@ -760,7 +831,7 @@ module ::Array::Compositing::ArrayInterface
       @parent_index_map.looked_up!( local_index )
       
       post_set_hook( local_index, object, false ) unless @without_hooks
-      child_post_set_hook( local_index, object, false, parent_instance ) unless @without_child_hooks
+      child_post_set_hook( local_index, object, false, parent_array ) unless @without_child_hooks
 
     else
       
@@ -779,7 +850,7 @@ module ::Array::Compositing::ArrayInterface
   ###
   # Perform #set in self inherited from #set requested on parent (or parent of parent).
   #
-  # @param [Array::Compositing] parent_instance
+  # @param [Array::Compositing] parent_array
   #
   #        Instance where #set occurred that is now cascading downward.
   #
@@ -795,10 +866,10 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def update_for_parent_set( parent_instance, parent_index, object )
+  def update_for_parent_set( parent_array, parent_index, object )
     
-    parent_index_map = parent_instance.parent_index_map
-    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_index_map, parent_index )
+    parent_index_map = parent_array.parent_index_map
+    if @parent_index_map.parent_controls_parent_index?( parent_index_map, parent_index )
       local_index = @parent_index_map.parent_set( parent_index_map, parent_index )
       undecorated_set( local_index, nil )
       @children.each { |this_array| this_array.update_for_parent_set( local_index, object ) }
@@ -817,7 +888,7 @@ module ::Array::Compositing::ArrayInterface
   #   Inserts cascade individually, even if #insert was called on the parent with multiple
   #   objects.
   #
-  # @param [Array::Compositing] parent_instance
+  # @param [Array::Compositing] parent_array
   #
   #        Instance where #insert occurred that is now cascading downward.
   #
@@ -833,9 +904,9 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def update_for_parent_insert( parent_instance, requested_parent_index, parent_index, object )
+  def update_for_parent_insert( parent_array, requested_parent_index, parent_index, object )
 
-    local_index = @parent_index_map.parent_insert( parent_instance.parent_index_map, parent_index, 1 )
+    local_index = @parent_index_map.parent_insert( parent_array.parent_index_map, parent_index, 1 )
     undecorated_insert( local_index, nil )
     @children.each { |this_array| this_array.update_for_parent_insert( self, local_index, local_index, object ) }
 
@@ -850,7 +921,7 @@ module ::Array::Compositing::ArrayInterface
   ###
   # Perform #set in self inherited from #delete_at requested on parent (or parent of parent).
   #
-  # @param [Array::Compositing] parent_instance
+  # @param [Array::Compositing] parent_array
   #
   #        Instance where #delete_at occurred that is now cascading downward.
   #
@@ -866,17 +937,17 @@ module ::Array::Compositing::ArrayInterface
   #
   #        Whether delete occurred.
   #
-  def update_for_parent_delete_at( parent_instance, parent_index, object )
+  def update_for_parent_delete_at( parent_array, parent_index, object )
 
     did_delete = false
     
-    parent_index_map = parent_instance.parent_index_map
+    parent_index_map = parent_array.parent_index_map
     
-    unless @parent_index_map.replaced_parent_element_with_parent_index?( parent_index_map, parent_index )
+    if @parent_index_map.parent_controls_parent_index?( parent_index_map, parent_index )
       
       local_index = @parent_index_map.local_index( parent_index_map, parent_index )
       
-      if @without_child_hooks || child_pre_delete_hook( local_index, parent_instance )
+      if @without_child_hooks || child_pre_delete_hook( local_index, parent_array )
 
         @parent_index_map.parent_delete_at( parent_index_map, parent_index )
 
@@ -888,7 +959,7 @@ module ::Array::Compositing::ArrayInterface
           did_delete = true
           object = undecorated_delete_at( local_index )
           object = post_delete_hook( local_index, object ) unless @without_hooks
-          child_post_delete_hook( local_index, object, parent_instance ) unless @without_child_hooks
+          child_post_delete_hook( local_index, object, parent_array ) unless @without_child_hooks
           @children.each { |this_array| this_array.update_for_parent_delete_at( self, local_index, object ) }
         end
         

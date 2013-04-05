@@ -286,6 +286,38 @@ describe ::Array::Compositing do
 
   end
 
+  ##############
+  #  shuffle!  #
+  ##############
+  
+  it 'can shuffle' do
+    pending
+  end
+  
+  #############
+  #  reorder  #
+  #############
+
+  it 'can re-order elements' do
+    pending
+  end
+  
+  ##########
+  #  move  #
+  ##########
+
+  it 'can move indexes' do
+    pending
+  end
+
+  ##########
+  #  swap  #
+  ##########
+
+  it 'can swap indexes' do
+    pending
+  end
+  
   ###############
   #  delete_if  #
   ###############
@@ -983,7 +1015,7 @@ describe ::Array::Compositing do
     
     class ::Array::Compositing::SubMockChildPreSet < ::Array::Compositing
       
-      def child_pre_set_hook( index, object, is_insert = false, parent_instance = nil )
+      def child_pre_set_hook( index, object, is_insert = false, parent_array = nil )
         return :some_other_value
       end
       
@@ -1005,7 +1037,7 @@ describe ::Array::Compositing do
 
     class ::Array::Compositing::SubMockChildPostSet < ::Array::Compositing
       
-      def child_post_set_hook( index, object, is_insert = false, parent_instance = nil )
+      def child_post_set_hook( index, object, is_insert = false, parent_array = nil )
         push( :some_other_value )
       end
       
@@ -1028,7 +1060,7 @@ describe ::Array::Compositing do
 
     class ::Array::Compositing::SubMockChildPreDelete < ::Array::Compositing
       
-      def child_pre_delete_hook( index, parent_instance = nil )
+      def child_pre_delete_hook( index, parent_array = nil )
         false
       end
       
@@ -1053,7 +1085,7 @@ describe ::Array::Compositing do
 
     class ::Array::Compositing::SubMockChildPostDelete < ::Array::Compositing
       
-      def child_post_delete_hook( index, object, parent_instance = nil )
+      def child_post_delete_hook( index, object, parent_array = nil )
         delete( :some_other_value )
       end
       

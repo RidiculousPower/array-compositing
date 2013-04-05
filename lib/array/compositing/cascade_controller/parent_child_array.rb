@@ -1,6 +1,6 @@
 # -*- encoding : utf-8 -*-
 
-class ::Array::Compositing::ParentChildArray < ::Array
+class ::Array::Compositing::CascadeController::ParentChildArray < ::Array
   
   ############
   #  delete  #

@@ -26,7 +26,7 @@ Added common CompositingObject support.
 
 ## 5/31/12 ##
 
-Added :parent_composite_object and changed :parent_instance to alias :parent_composite_object.
+Added :parent_composite_object and changed :parent_array to alias :parent_composite_object.
 
 ## 6/1/12 ##
 
