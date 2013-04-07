@@ -12,17 +12,17 @@ class ::Array::Compositing::CascadeController::IndexMap::ParentLocalMap <
     next_local = local_array_size
     
     # from right to left
-    for this_parent_index = parent_local_map.size - 1 ; this_parent_index >= 0 ; this_parent_index -= 1
-      
-      if this_local_index = parent_local_map[ this_parent_index ]
+    this_parent_index = size - 1
+    while this_parent_index >= 0
+      if this_local_index = self[ this_parent_index ]
         # if we have a local index, record it as our next
         next_local = this_local_index
       else
         # if we have nil, set local index to local index of element to the right
         # this means the index was deleted and inserts in part in relation to index take place here
-        parent_local_map[ this_parent_index ] = next_local
+        self[ this_parent_index ] = next_local
       end
-    
+      this_parent_index -= 1
     end
   
   end

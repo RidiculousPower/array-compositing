@@ -157,9 +157,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Self.
   #
-  def register_parent( parent_array, insert_at_index = nil )
-    
-    insert_at_index ||= @parent_index_map.first_index_after_last_parent_element
+  def register_parent( parent_array, insert_at_index = size )
     
     unless @parents.include?( parent_array )
       @parents.push( parent_array.register_child( self ) )

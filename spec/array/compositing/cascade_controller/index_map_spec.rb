@@ -32,4 +32,30 @@ describe ::Array::Compositing::CascadeController::IndexMap do
     end
   end
 
+  ##########
+  #  move  #
+  ##########
+  
+  context '#move' do
+    before :each do
+      index_map.move( 0, 2 )
+    end
+    it 'will move a specified index to a new index' do
+      index_map.should == [ 0, 2, 4, 7 ]
+    end
+  end
+  
+  ##########
+  #  swap  #
+  ##########
+
+  context '#swap' do
+    before :each do
+      index_map.swap( 1, 3 )
+    end
+    it 'will swap a specified index with another index' do
+      index_map.should == [ 1, 7, 4, 2 ]
+    end
+  end
+  
 end
