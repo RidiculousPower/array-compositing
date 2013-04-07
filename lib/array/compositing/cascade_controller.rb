@@ -564,7 +564,7 @@ class ::Array::Compositing::CascadeController
       # insert nil parent instance for each new local index
       @local_index_to_parent_map.insert( this_local_index, nil )
       # insert nil parent index for local index
-      @local_parent_maps.each do |this_parent_array, this_local_parent_map|
+      @local_parent_maps.each do |this_parent_array_id, this_local_parent_map|
         this_local_parent_map.insert( this_local_index, nil )
       end
     end
@@ -737,7 +737,7 @@ class ::Array::Compositing::CascadeController
     if @local_index_to_parent_map
       @local_index_to_parent_map.delete_at( local_index )
       @local_index_requires_lookup.delete_at( local_index )
-      @local_parent_maps.each do |this_parent_array, this_local_parent_map|
+      @local_parent_maps.each do |this_parent_array_id, this_local_parent_map|
         this_local_parent_map.delete_at( local_index )
       end
     end
@@ -771,7 +771,7 @@ class ::Array::Compositing::CascadeController
                       parent_local_map = parent_local_map( parent_array ),
                       local_parent_map = local_parent_map( parent_array ) )
     
-    # we create only the duplicate of existing order, which we will return as the new_local_order
+    # we create only the duplicate of existing order, which we will eventually clear and return as the new_local_order
     new_local_order = existing_parent_local_map = parent_local_map.dup
     
     # translate local => parent to existing local => new parent
@@ -784,18 +784,19 @@ class ::Array::Compositing::CascadeController
       end
     end
 
+    # ensure all parent => local entries have local index values
+    parent_local_map.ensure_no_nil_local_indexes( @array_instance.size )
+    
+    # clear existing_parent_local_map to use as new_local_order
     new_local_order.clear
 
     # interpolate locals belonging to parent (being re-ordered) with others (no change)
     # this ends up with, for example: [ nil, nil, local for parent1, nil, local for parent2, ... ]
     # where indexes 0, 1, 3 are controlled locally or by a different parent, so do not move
     this_parent_order_index = -1
-    local_parent_map.each_with_index do |this_new_parent_index, this_new_local_index|
+    local_parent_map.each do |this_new_parent_index|
       new_local_order.push( this_new_parent_index ? parent_local_map[ this_parent_order_index += 1 ] : nil )
     end
-    
-    # finally ensure all parent => local entries have local index values
-    parent_local_map.ensure_no_nil_local_indexes( @array_instance.size )
     
     return new_local_order
         
@@ -807,35 +808,24 @@ class ::Array::Compositing::CascadeController
   
   def local_reorder( new_local_order )
     
-    existing_local_to_parent = [ ]
-    
-    # for each local we update the parent => local map to the new local index
-    @local_index_to_parent_map.each_with_index do |this_parent_array, this_existing_local_index|
-      this_existing_parent_index = parent_index( this_parent_array, this_existing_local_index )
-      existing_local_to_parent[ this_existing_local_index ] = this_existing_parent_index
-      this_new_local_index = new_local_order[ this_existing_local_index ]
-      parent_local_map( this_parent_array )[ this_existing_parent_index ] = this_new_local_index
-    end
-
-    # then we clear the local to parent maps
-    @local_parent_maps.each { |this_parent_array, this_local_parent_map| this_local_parent_map.clear }
-
-    # then we iterate local again and ask each parent for its local
-    @local_index_to_parent_map.each_with_index do |this_parent_array, this_existing_local_index|
-      this_new_local_index = new_local_order[ this_existing_local_index ]
-      this_existing_parent_index = existing_local_to_parent[ this_existing_local_index ]
-      local_parent_map( this_parent_array )[ this_new_local_index ] = this_existing_parent_index
+    new_local_to_parent_map = @local_index_to_parent_map.dup
+    this_existing_local_index = -1
+    @local_index_to_parent_map.collect! do |this_parent_array| 
+      this_new_local_index = new_local_order[ this_existing_local_index += 1 ]
+      this_new_parent_array = new_local_to_parent_map[ this_new_local_index ]
+      this_new_parent_array
     end
     
-    # reuse our array to reorder @local_index_to_parent
-    new_local_index_to_parent_array = existing_local_to_parent
-    new_local_order.each_with_index do |this_new_local_index, this_existing_local_index|
-      this_parent_array = @local_index_to_parent[ this_existing_local_index ]
-      new_local_index_to_parent_array[ this_new_local_index ] = this_parent_array
+    @parent_local_maps.each do |this_parent_array_id, this_parent_local_map|
+      this_existing_parent_index = -1
+      this_parent_local_map.collect! do |this_existing_local_index|
+        this_new_local_index = new_local_order[ this_existing_local_index ]
+        @local_parent_maps[ this_parent_array_id ][ this_existing_parent_index += 1 ] = this_new_local_index
+        this_new_local_index
+      end
     end
-    @local_index_to_parent_map.replace( new_local_index_to_parent_array )
     
-    @parent_local_maps.each do |this_parent_array, this_parent_local_map|
+    @parent_local_maps.each do |this_parent_array_id, this_parent_local_map|
       # finally ensure all parent => local entries have local index values
       this_parent_local_map.ensure_no_nil_local_indexes( @array_instance.size )
     end

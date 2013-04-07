@@ -722,10 +722,43 @@ describe ::Array::Compositing::CascadeController do
     let( :new_local_order ) { index_map.parent_reorder( parent_array_one, new_parent_one_order ) }
     it 'will reorder maps based on new order' do
       new_local_order.should == [ nil, nil, nil, nil, 7, 6, 4, 5 ]
+
+      index_map.parent_array( 0 ).should be nil
+      index_map.parent_array( 1 ).should be nil
+      index_map.parent_array( 2 ).should be nil
+      index_map.parent_array( 3 ).should be nil
+      index_map.parent_index( 0 ).should be nil
+      index_map.parent_index( 1 ).should be nil
+      index_map.parent_index( 2 ).should be nil
+      index_map.parent_index( 3 ).should be nil
+
+      index_map.parent_array( 4 ).should be parent_array_one
+      index_map.parent_array( 5 ).should be parent_array_one
+      index_map.parent_array( 6 ).should be parent_array_one
+      index_map.parent_array( 7 ).should be parent_array_one
       index_map.parent_index( 4 ).should be 3
       index_map.parent_index( 5 ).should be 2
       index_map.parent_index( 6 ).should be 0
       index_map.parent_index( 7 ).should be 1
+
+      index_map.parent_array( 8 ).should be parent_array_two
+      index_map.parent_array( 9 ).should be parent_array_two
+      index_map.parent_array( 10 ).should be parent_array_two
+      index_map.parent_array( 11 ).should be parent_array_two
+      index_map.parent_index( 8 ).should be 0
+      index_map.parent_index( 9 ).should be 1
+      index_map.parent_index( 10 ).should be 2
+      index_map.parent_index( 11 ).should be 3
+
+      index_map.parent_array( 12 ).should be parent_array_three
+      index_map.parent_array( 13 ).should be parent_array_three
+      index_map.parent_array( 14 ).should be parent_array_three
+      index_map.parent_array( 15 ).should be parent_array_three
+      index_map.parent_index( 12 ).should be 0
+      index_map.parent_index( 13 ).should be 1
+      index_map.parent_index( 14 ).should be 2
+      index_map.parent_index( 15 ).should be 3
+
     end
   end
 
@@ -734,27 +767,33 @@ describe ::Array::Compositing::CascadeController do
   ###################
 
   context '#local_reorder' do
-    let( :new_order ) { [ 12, 3, 5, 11, 2, 9, 10, 7, 1, 8, 0, 4, 6, 15, 14, 13 ] }
-    it '' do
-      index_map.parent( 0 ).should be nil
-      index_map.parent( 1 ).should be nil
-      index_map.parent( 2 ).should be nil
-      index_map.parent( 3 ).should be nil
+    let( :new_local_order ) { [ 12, 3,  5,  11, 
+                                2,  9,  10, 7, 
+                                1,  8,  0,  4, 
+                                6,  15, 14, 13 ] }
+    before :each do
+      index_map.local_reorder( new_local_order )
+    end
+    it 'will reorder maps based on new order' do
+      index_map.parent_array( 0 ).should be parent_array_three
+      index_map.parent_array( 1 ).should be nil
+      index_map.parent_array( 2 ).should be parent_array_one
+      index_map.parent_array( 3 ).should be parent_array_two
       
-      index_map.parent( 4 ).should be parent_array_one
-      index_map.parent( 5 ).should be parent_array_one
-      index_map.parent( 6 ).should be parent_array_one
-      index_map.parent( 7 ).should be parent_array_one
+      index_map.parent_array( 4 ).should be nil
+      index_map.parent_array( 5 ).should be parent_array_two
+      index_map.parent_array( 6 ).should be parent_array_two
+      index_map.parent_array( 7 ).should be parent_array_one
 
-      index_map.parent( 8 ).should be parent_array_two
-      index_map.parent( 9 ).should be parent_array_two
-      index_map.parent( 10 ).should be parent_array_two
-      index_map.parent( 11 ).should be parent_array_two
+      index_map.parent_array( 8 ).should be nil
+      index_map.parent_array( 9 ).should be parent_array_two
+      index_map.parent_array( 10 ).should be nil
+      index_map.parent_array( 11 ).should be parent_array_one
 
-      index_map.parent( 12 ).should be parent_array_three
-      index_map.parent( 13 ).should be parent_array_three
-      index_map.parent( 14 ).should be parent_array_three
-      index_map.parent( 15 ).should be parent_array_three
+      index_map.parent_array( 12 ).should be parent_array_one
+      index_map.parent_array( 13 ).should be parent_array_three
+      index_map.parent_array( 14 ).should be parent_array_three
+      index_map.parent_array( 15 ).should be parent_array_three
     end
   end
 

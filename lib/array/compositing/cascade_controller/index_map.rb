@@ -1,6 +1,16 @@
 
 class ::Array::Compositing::CascadeController::IndexMap < ::Array
   
+  ##########
+  #  hash  #
+  ##########
+
+  def hash
+    
+    return __id__
+    
+  end
+  
   ########################################
   #  renumber_mapped_indexes_for_delete  #
   ########################################
