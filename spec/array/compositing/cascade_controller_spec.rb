@@ -802,7 +802,36 @@ describe ::Array::Compositing::CascadeController do
   #################
 
   context '#parent_move' do
-    it '' do
+    let( :new_local_index ) { index_map.parent_move( parent_array_one, index_one, index_two ) }
+    context 'move in place' do
+      let( :index_one ) { 0 }
+      let( :index_two ) { 0 }
+      it 'will do nothing' do
+        new_local_index.should be nil
+        index_map.local_index( parent_array_one, index_one ).should be 4
+      end
+    end
+    context 'move smaller index to greater' do
+      let( :index_one ) { 0 }
+      let( :index_two ) { 3 }
+      it 'will move and adjust maps' do
+        new_local_index.should be 7
+        index_map.local_index( parent_array_one, 0 ).should be 4
+        index_map.local_index( parent_array_one, 1 ).should be 5
+        index_map.local_index( parent_array_one, 2 ).should be 6
+        index_map.local_index( parent_array_one, 3 ).should be 7
+      end
+    end
+    context 'move greater index to smaller' do
+      let( :index_one ) { 3 }
+      let( :index_two ) { 0 }
+      it 'will move and adjust maps' do
+        new_local_index.should be 4
+        index_map.local_index( parent_array_one, 0 ).should be 4
+        index_map.local_index( parent_array_one, 1 ).should be 5
+        index_map.local_index( parent_array_one, 2 ).should be 6
+        index_map.local_index( parent_array_one, 3 ).should be 7
+      end
     end
   end
 
@@ -811,7 +840,141 @@ describe ::Array::Compositing::CascadeController do
   ################
 
   context '#local_move' do
-    it '' do
+    let( :new_local_index ) { index_map.local_move( index_one, index_two ) }
+    context 'move in place' do
+      context 'where both are local' do
+        let( :index_one ) { 0 }
+        let( :index_two ) { 0 }
+        it 'will do nothing' do
+          new_local_index.should be 0
+          index_map.parent_array( 0 ).should be nil
+        end
+      end
+      context 'where both are controlled by parent' do
+        let( :index_one ) { 4 }
+        let( :index_two ) { 4 }
+        it 'will do nothing' do
+          new_local_index.should be 4
+          index_map.parent_array( 4 ).should be parent_array_one
+          index_map.parent_index( 4 ).should be 0
+        end
+      end
+    end
+    context 'move smaller index to greater' do
+      context 'where both are local' do
+        let( :index_one ) { 0 }
+        let( :index_two ) { 3 }
+        it 'will move and adjust maps' do
+          new_local_index.should be 3
+          index_map.parent_array( 0 ).should be nil
+        end
+      end
+      context 'where smaller is local and greater controlled by parent' do
+        let( :index_one ) { 0 }
+        let( :index_two ) { 4 }
+        it 'will move and adjust maps' do
+          new_local_index.should be 4
+          index_map.parent_array( 4 ).should be nil
+          index_map.parent_array( 3 ).should be parent_array_one
+          index_map.parent_index( 3 ).should be 0
+        end
+      end
+      context 'where greater is local and smaller controlled by parent' do
+        let( :index_one ) { 16 }
+        let( :index_two ) { 4 }
+        before :each do
+          index_map
+          array_instance.push( :A_16 )
+          index_map.local_insert( 16, 1 )
+        end
+        it 'will move and adjust maps' do
+          new_local_index.should be 4
+          index_map.parent_array( 4 ).should be nil
+          index_map.parent_array( 5 ).should be parent_array_one
+          index_map.parent_array( 16 ).should be parent_array_three
+        end
+      end
+      context 'where both are controlled by the same parent' do
+        let( :index_one ) { 4 }
+        let( :index_two ) { 7 }
+        it 'will move and adjust maps' do
+          new_local_index.should be 7
+          index_map.parent_array( 4 ).should be parent_array_one
+          index_map.parent_array( 7 ).should be parent_array_one
+        end
+      end
+      context 'where both are controlled by different parents' do
+        let( :index_one ) { 4 }
+        let( :index_two ) { 8 }
+        it 'will move and adjust maps' do
+          new_local_index.should be 8
+          index_map.parent_array( 4 ).should be parent_array_one
+          index_map.parent_array( 7 ).should be parent_array_two
+          index_map.parent_array( 8 ).should be parent_array_one
+          index_map.parent_array( 9 ).should be parent_array_two
+        end
+      end
+    end
+    context 'move greater index to smaller' do
+      context 'where both are local' do
+        let( :index_one ) { 3 }
+        let( :index_two ) { 0 }
+        it 'will move and adjust maps' do
+          new_local_index.should be 0
+          index_map.parent_array( 3 ).should be nil
+          index_map.parent_array( 0 ).should be nil
+        end
+      end
+      context 'where smaller is local and greater controlled by parent' do
+        let( :index_one ) { 4 }
+        let( :index_two ) { 0 }
+        it 'will move and adjust maps' do
+          new_local_index.should be 0
+          index_map.parent_array( 4 ).should be nil
+          index_map.parent_array( 5 ).should be parent_array_one
+          index_map.parent_array( 0 ).should be parent_array_one
+          index_map.parent_array( 1 ).should be nil
+        end
+      end
+      context 'where greater is local and smaller controlled by parent' do
+        let( :index_one ) { 16 }
+        let( :index_two ) { 4 }
+        before :each do
+          index_map
+          array_instance.push( :A_16 )
+          index_map.local_insert( 16, 1 )
+        end
+        it 'will move and adjust maps' do
+          new_local_index.should be 4
+          index_map.parent_array( 4 ).should be nil
+          index_map.parent_array( 5 ).should be parent_array_one
+          index_map.parent_array( 16 ).should be parent_array_three
+        end
+      end
+      context 'where both are controlled by the same parent' do
+        let( :index_one ) { 7 }
+        let( :index_two ) { 4 }
+        it 'will move and adjust maps' do
+          new_local_index.should be 4
+          index_map.parent_array( 4 ).should be parent_array_one
+          index_map.parent_array( 5 ).should be parent_array_one
+          index_map.parent_array( 7 ).should be parent_array_one
+          index_map.parent_array( 8 ).should be parent_array_two
+        end
+      end
+      context 'where both are controlled by different parents' do
+        let( :index_one ) { 8 }
+        let( :index_two ) { 4 }
+        it 'will move and adjust maps' do
+          new_local_index.should be 4
+          index_map.parent_array( 4 ).should be parent_array_two
+          index_map.parent_array( 5 ).should be parent_array_one
+          index_map.parent_array( 6 ).should be parent_array_one
+          index_map.parent_array( 7 ).should be parent_array_one
+          index_map.parent_array( 8 ).should be parent_array_one
+          index_map.parent_array( 9 ).should be parent_array_two
+        end
+      end
     end
   end
 
@@ -820,7 +983,17 @@ describe ::Array::Compositing::CascadeController do
   #################
 
   context '#parent_swap' do
-    it '' do
+    context 'swap in place' do
+      it 'will do nothing' do
+      end
+    end
+    context 'swap smaller index with greater' do
+      it 'will swap and adjust maps' do
+      end
+    end
+    context 'swap greater index with smaller' do
+      it 'will swap and adjust maps' do
+      end
     end
   end
 
@@ -829,7 +1002,17 @@ describe ::Array::Compositing::CascadeController do
   ################
 
   context '#local_swap' do
-    it '' do
+    context 'swap in place' do
+      it 'will do nothing' do
+      end
+    end
+    context 'swap smaller index with greater' do
+      it 'will swap and adjust maps' do
+      end
+    end
+    context 'swap greater index with smaller' do
+      it 'will swap and adjust maps' do
+      end
     end
   end
 

@@ -11,6 +11,76 @@ class ::Array::Compositing::CascadeController::IndexMap < ::Array
     
   end
   
+  ################
+  #  each_range  #
+  ################
+  
+  ###
+  # Iterates a range in self between index_one and index_two from left to right.
+  #
+  def each_range( index_one, index_two )
+
+    return to_enum( __method__ ) unless block_given?
+
+    range_start = nil
+    range_end = nil
+    
+    # renumber local => parent in range
+    if index_one < index_two
+      range_start = index_one
+      range_end = index_two
+    else
+      range_start = index_two
+      range_end = index_one
+    end
+    
+    # copy parent => local to local => parent as appropriate
+    number_of_indexes_modified = range_end - range_start
+    number_of_indexes_modified.times do |this_time|
+      this_index = range_start + this_time
+      this_object = self[ this_index ]
+      yield( this_object, this_index )
+    end
+    
+    return self
+    
+  end
+
+  ########################
+  #  reverse_each_range  #
+  ########################
+  
+  ###
+  # Iterates a range in self between index_one and index_two from right to left.
+  #
+  def reverse_each_range( index_one, index_two )
+
+    return to_enum( __method__ ) unless block_given?
+
+    range_start = nil
+    range_end = nil
+    
+    # renumber local => parent in range
+    if index_one < index_two
+      range_start = index_two
+      range_end = index_one
+    else
+      range_start = index_one
+      range_end = index_two
+    end
+    
+    # copy parent => local to local => parent as appropriate
+    number_of_indexes_modified = range_start - range_end
+    number_of_indexes_modified.times do |this_time|
+      this_index = range_start - this_time
+      this_object = self[ this_index ]
+      yield( this_object, this_index )
+    end
+    
+    return self
+
+  end
+  
   ########################################
   #  renumber_mapped_indexes_for_delete  #
   ########################################
@@ -39,29 +109,31 @@ class ::Array::Compositing::CascadeController::IndexMap < ::Array
     
   end
   
-  ##########
-  #  move  #
-  ##########
+  #######################
+  #  renumber_for_move  #
+  #######################
   
-  def move( existing_index, new_index )
+  def renumber_for_move( existing_index, new_index, include_new_index = false )
     
     # parent is below requested location
     if existing_index < new_index
 
       # modify any index in range [original index .. new index ] by subtracting 1
-      collect! { |this_index| ( this_index                     and 
-                                this_index >= existing_index   and 
-                                this_index < new_index )         ? this_index - 1
-                                                                 : this_index }
+      collect! { |this_index| ( this_index                                     and 
+                                this_index >= existing_index                   and 
+                                include_new_index ? this_index <= new_index
+                                                    : this_index < new_index )   ? this_index - 1
+                                                                                 : this_index }
     
     # parent is above requested location
     elsif existing_index > new_index
 
       # modify any index in range [new index .. original index ] by adding 1
-      collect! { |this_index| ( this_index                     and 
-                                this_index > new_index         and 
-                                this_index <= existing_index )   ? this_index + 1
-                                                                 : this_index }
+      collect! { |this_index| ( this_index                                  and 
+                                include_new_index ? this_index >= new_index
+                                                  : this_index > new_index  and 
+                                this_index <= existing_index )                ? this_index + 1
+                                                                              : this_index }
     
     end
 

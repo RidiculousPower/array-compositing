@@ -842,25 +842,29 @@ class ::Array::Compositing::CascadeController
                    parent_local_map = parent_local_map( parent_array ),
                    local_parent_map = local_parent_map( parent_array ) )
     
+    new_local_index = nil
+    
     # if we're asked to move in place we don't need to do anything
     unless new_parent_index == existing_parent_index
+            
+      new_local_index = parent_local_map[ new_parent_index ]
+      existing_local_index = parent_local_map.delete_at( existing_parent_index )
 
-      # move in parent => local
-      parent_local_map.insert( new_parent_index, parent_local_map.delete_at( existing_parent_index ) )
+      # insert new in parent => local
+      parent_local_map.renumber_for_move( existing_local_index, new_local_index, true )
+      parent_local_map.insert( new_parent_index, new_local_index )
 
       # if parent doesn't control then we don't have to track in local maps
       if parent_controls_parent_index?( parent_array, existing_parent_index, parent_local_map, local_parent_map )
-        # get current local index
-        existing_local_index = local_index( parent_array, existing_parent_index, parent_local_map )
-        # move in local => parent
-        local_parent_map[ existing_local_index ] = new_parent_index
-        # modify range between existing and new indexes
-        local_parent_map.move( existing_parent_index, new_parent_index )
+        parent_local_map.each_range( existing_parent_index, new_parent_index ) do |this_local_index, this_parent_index|
+          # only set parent index if one is already set for this local index
+          local_parent_map[ this_local_index ] = this_parent_index if local_parent_map[ this_local_index ]
+        end
       end
-    
+
     end
     
-    return new_parent_index
+    return new_local_index
     
   end
   
@@ -873,19 +877,24 @@ class ::Array::Compositing::CascadeController
     # if we're asked to move in place we don't need to do anything
     unless new_local_index == existing_local_index
 
-      if parent_array = @local_index_to_parent[ existing_local_index ]
-        parent_local_map = parent_local_map( parent_array )
-        local_parent_map = local_parent_map( parent_array )
-        # move in parent => local
-        this_existing_parent_index = local_parent_map[ existing_local_index ]
-        parent_local_map[ this_existing_parent_index ] = new_local_index
-        # move in local => parent
-        local_parent_map.insert( new_local_index, local_parent_map.delete_at( existing_local_index ) )
-        # modify range between existing and new indexes
-        parent_local_map.move( existing_local_index, new_local_index )
+      # adjust local => parent maps by moving index (parent stays the same)
+      @local_parent_maps.each do |this_parent_array_id, this_local_parent_map|
+        this_local_parent_map.insert( new_local_index, this_local_parent_map.delete_at( existing_local_index ) )
       end
 
+      # adjust local => parent array map by moving index (parent array stays the same)
       @local_index_to_parent_map.insert( new_local_index, @local_index_to_parent_map.delete_at( existing_local_index ) )
+
+      # adjust parent => local maps by renumbering and filling in from local => parent
+      @parent_local_maps.each do |this_parent_array_id, this_parent_local_map|
+        this_parent_local_map.renumber_for_move( existing_local_index, new_local_index )
+        this_local_parent_map = @local_parent_maps[ this_parent_array_id ]
+        this_local_parent_map.each_range( existing_local_index, 
+                                          new_local_index ) do |this_parent_index, this_local_index|
+          # only set parent index if one is already set for this local index
+          this_parent_local_map[ this_parent_index ] = this_local_index if this_parent_index
+        end
+      end
     
     end
     

@@ -32,13 +32,13 @@ describe ::Array::Compositing::CascadeController::IndexMap do
     end
   end
 
-  ##########
-  #  move  #
-  ##########
+  #######################
+  #  renumber_for_move  #
+  #######################
   
-  context '#move' do
+  context '#renumber_for_move' do
     before :each do
-      index_map.move( 0, 2 )
+      index_map.renumber_for_move( 0, 2 )
     end
     it 'will move a specified index to a new index' do
       index_map.should == [ 0, 2, 4, 7 ]
