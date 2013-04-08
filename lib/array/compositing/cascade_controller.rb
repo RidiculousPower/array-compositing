@@ -85,6 +85,46 @@ class ::Array::Compositing::CascadeController
     
   end
 
+  ##########################
+  #  new_parent_local_map  #
+  ##########################
+  
+  ###
+  # Create parent to local map for parent instance.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which parent index is being queried.
+  #
+  def new_parent_local_map( parent_array )
+    
+    new_parent_local_map = ::Array::Compositing::CascadeController::IndexMap::ParentLocalMap.new
+    @parent_local_maps[ parent_array.__id__ ] = new_parent_local_map
+    
+    return new_parent_local_map
+    
+  end
+
+  ######################
+  #  new_local_parent_map  #
+  ######################
+  
+  ###
+  # Create parent to local map for parent instance.
+  #
+  # @params [Array::Compositing] parent_map
+  # 
+  #         Parent array instance for which parent index is being queried.
+  #
+  def new_local_parent_map( parent_array )
+    
+    new_local_parent_map = ::Array::Compositing::CascadeController::IndexMap::LocalParentMap.new
+    @local_parent_maps[ parent_array.__id__ ] = new_local_parent_map
+    
+    return new_local_parent_map
+    
+  end
+
   #####################
   #  register_parent  #
   #####################
@@ -107,10 +147,8 @@ class ::Array::Compositing::CascadeController
     @local_index_to_parent_map ||= [ ]
     @local_index_requires_lookup ||= [ ]
     
-    parent_local_map = ::Array::Compositing::CascadeController::IndexMap::ParentLocalMap.new
-    local_parent_map = ::Array::Compositing::CascadeController::IndexMap::LocalParentMap.new    
-    @parent_local_maps[ parent_array.__id__ ] = parent_local_map
-    @local_parent_maps[ parent_array.__id__ ] = local_parent_map
+    parent_local_map = new_parent_local_map( parent_array )
+    local_parent_map = new_local_parent_map( parent_array )
     
     # map each element to corresponding local
     parent_element_count = parent_array.size
@@ -771,31 +809,37 @@ class ::Array::Compositing::CascadeController
                       parent_local_map = parent_local_map( parent_array ),
                       local_parent_map = local_parent_map( parent_array ) )
     
-    # we create only the duplicate of existing order, which we will eventually clear and return as the new_local_order
-    new_local_order = existing_parent_local_map = parent_local_map.dup
-    
-    # translate local => parent to existing local => new parent
-    local_parent_map.collect! do |this_existing_parent_index|
-      if this_existing_parent_index
-        this_new_parent_index = new_parent_order[ this_existing_parent_index ]
-        this_new_local_index = existing_parent_local_map[ this_new_parent_index ]
-        parent_local_map[ this_existing_parent_index ] = this_new_local_index
-        this_new_parent_index
+    new_local_order = [ ]
+
+    nth_control_index = nil
+    new_parent_order.each_with_index do |this_new_parent_index, this_existing_parent_index|
+      if parent_controls_parent_index?( parent_array, this_new_parent_index, parent_local_map, local_parent_map )        
+        # existing_local_index: the local index controlled by new_parent_index
+        this_existing_local_index = parent_local_map[ this_new_parent_index ]
+        # new_local_index: the first (or next) local index controlled by parent
+        if parent_controls_parent_index?( parent_array, this_existing_parent_index, parent_local_map, local_parent_map )
+          this_new_local_index = nth_control_index = parent_local_map[ this_existing_parent_index ]
+        else
+          this_new_local_index = nth_control_index = local_parent_map.next_parent_controlled_index( nth_control_index )
+        end
+        new_local_order[ this_existing_local_index ] = this_new_local_index
       end
     end
 
-    # ensure all parent => local entries have local index values
-    parent_local_map.ensure_no_nil_local_indexes( @array_instance.size )
+    existing_parent_local_map = parent_local_map
+    parent_local_map = new_parent_local_map( parent_array )
+    existing_parent_local_map.each_with_index do |this_existing_local_index, this_existing_parent_index|
+      this_new_parent_index = new_parent_order[ this_existing_parent_index ] || this_existing_parent_index
+      parent_local_map[ this_new_parent_index ] = this_existing_local_index
+    end
     
-    # clear existing_parent_local_map to use as new_local_order
-    new_local_order.clear
-
-    # interpolate locals belonging to parent (being re-ordered) with others (no change)
-    # this ends up with, for example: [ nil, nil, local for parent1, nil, local for parent2, ... ]
-    # where indexes 0, 1, 3 are controlled locally or by a different parent, so do not move
-    this_parent_order_index = -1
-    local_parent_map.each do |this_new_parent_index|
-      new_local_order.push( this_new_parent_index ? parent_local_map[ this_parent_order_index += 1 ] : nil )
+    this_new_local_index = -1
+    local_parent_map.collect! do |this_existing_parent_index|
+      this_new_local_index += 1
+      if this_existing_parent_index and this_new_parent_index = new_parent_order[ this_existing_parent_index ]
+        parent_local_map[ this_new_parent_index ] = this_new_local_index
+      end
+      this_new_parent_index
     end
     
     return new_local_order
@@ -823,11 +867,6 @@ class ::Array::Compositing::CascadeController
         @local_parent_maps[ this_parent_array_id ][ this_existing_parent_index += 1 ] = this_new_local_index
         this_new_local_index
       end
-    end
-    
-    @parent_local_maps.each do |this_parent_array_id, this_parent_local_map|
-      # finally ensure all parent => local entries have local index values
-      this_parent_local_map.ensure_no_nil_local_indexes( @array_instance.size )
     end
     
     return new_local_order
@@ -912,9 +951,6 @@ class ::Array::Compositing::CascadeController
     
     unless parent_index_one == parent_index_two
 
-      # swap in parent => local
-      parent_local_map.swap( parent_index_one, parent_index_two )
-      
       # check whether parent controls either/both of indexes in local
       parent_controls_one = parent_controls_parent_index?( parent_array, parent_index_one, 
                                                            parent_local_map, local_parent_map )
@@ -924,22 +960,27 @@ class ::Array::Compositing::CascadeController
       # 1. parent controls both
       if parent_controls_one and parent_controls_two
 
+        # swap in local => parent
         local_index_one = parent_local_map[ parent_index_one ]
         local_index_two = parent_local_map[ parent_index_two ]
-        # swap in local => parent
         local_parent_map.swap( local_index_one, local_index_two )
       
       # 2. parent controls index one
       elsif parent_controls_one
         
+        # controlled index points to new parent index
         local_parent_map[ local_index_one ] = parent_index_two
       
       # 3. parent controls index two
       elsif parent_controls_two
 
+        # controlled index points to new parent index
         local_parent_map[ local_index_two ] = parent_index_one
 
       end
+
+      # swap in parent => local
+      parent_local_map.swap( parent_index_one, parent_index_two )
             
     end
     

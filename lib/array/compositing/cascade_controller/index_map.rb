@@ -10,6 +10,22 @@ class ::Array::Compositing::CascadeController::IndexMap < ::Array
     return __id__
     
   end
+
+  #################
+  #  ensure_size  #
+  #################
+  
+  def ensure_size( element_count, value = nil )
+    
+    add_element_count = element_count - size
+    
+    if add_element_count > 0
+      add_element_count.times { |this_time| push( block_given? ? yield( this_time ) : value ) }
+    end
+    
+    return add_element_count
+    
+  end
   
   ################
   #  each_range  #
@@ -18,9 +34,13 @@ class ::Array::Compositing::CascadeController::IndexMap < ::Array
   ###
   # Iterates a range in self between index_one and index_two from left to right.
   #
-  def each_range( index_one, index_two )
+  def each_range( index_one, index_two = size )
 
-    return to_enum( __method__ ) unless block_given?
+    return to_enum unless block_given?
+    
+    count = nil
+    index_one = index_one < 0 ? ( count = size ) + index_one : index_one
+    index_two = index_two < 0 ? ( count || size ) + index_two : index_two
 
     range_start = nil
     range_end = nil
@@ -53,9 +73,13 @@ class ::Array::Compositing::CascadeController::IndexMap < ::Array
   ###
   # Iterates a range in self between index_one and index_two from right to left.
   #
-  def reverse_each_range( index_one, index_two )
+  def reverse_each_range( index_one, index_two = 0 )
 
-    return to_enum( __method__ ) unless block_given?
+    return to_enum unless block_given?
+
+    count = nil
+    index_one = index_one < 0 ? ( count = size ) + index_one : index_one
+    index_two = index_two < 0 ? ( count || size ) + index_two : index_two
 
     range_start = nil
     range_end = nil

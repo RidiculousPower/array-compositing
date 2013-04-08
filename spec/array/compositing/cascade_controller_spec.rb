@@ -226,22 +226,54 @@ describe ::Array::Compositing::CascadeController do
   #################
   
   context '#local_index' do
-    it 'will return a local index for a parent index' do
-      index_map.local_index( parent_array_one, 0 ).should be 4
-      index_map.local_index( parent_array_one, 1 ).should be 5
-      index_map.local_index( parent_array_one, 2 ).should be 6
-      index_map.local_index( parent_array_one, 3 ).should be 7
+    context 'when all parent indexes are mapped to locals' do
+      it 'will return a local index for a parent index' do
+        index_map.local_index( parent_array_one, 0 ).should be 4
+        index_map.local_index( parent_array_one, 1 ).should be 5
+        index_map.local_index( parent_array_one, 2 ).should be 6
+        index_map.local_index( parent_array_one, 3 ).should be 7
 
-      index_map.local_index( parent_array_two, 0 ).should be 8
-      index_map.local_index( parent_array_two, 1 ).should be 9
-      index_map.local_index( parent_array_two, 2 ).should be 10
-      index_map.local_index( parent_array_two, 3 ).should be 11
+        index_map.local_index( parent_array_two, 0 ).should be 8
+        index_map.local_index( parent_array_two, 1 ).should be 9
+        index_map.local_index( parent_array_two, 2 ).should be 10
+        index_map.local_index( parent_array_two, 3 ).should be 11
 
-      index_map.local_index( parent_array_three, 0 ).should be 12
-      index_map.local_index( parent_array_three, 1 ).should be 13
-      index_map.local_index( parent_array_three, 2 ).should be 14
-      index_map.local_index( parent_array_three, 3 ).should be 15
+        index_map.local_index( parent_array_three, 0 ).should be 12
+        index_map.local_index( parent_array_three, 1 ).should be 13
+        index_map.local_index( parent_array_three, 2 ).should be 14
+        index_map.local_index( parent_array_three, 3 ).should be 15
+      end
+    end
+    context 'when some locals have been replaced, deleted, or inserted' do
+      before :each do
+        index_map.local_set( 2 )
+        index_map.local_delete_at( 3 )
+        index_map.local_set( 10 )
+        index_map.local_set( 3 )
+        index_map.local_delete_at( 8 )
+        index_map.local_insert( 5, 2 )
+        index_map.local_delete_at( 11 )
+        index_map.local_set( 11 )
+        index_map.local_delete_at( 11 )
+        index_map.local_insert( 10, 1 )
+        index_map.local_insert( 15, 5 )
+      end
+      it 'will return a local index for a parent index' do
+        index_map.local_index( parent_array_one, 0 ).should be 3
+        index_map.local_index( parent_array_one, 1 ).should be 4
+        index_map.local_index( parent_array_one, 2 ).should be 7
+        index_map.local_index( parent_array_one, 3 ).should be 8
 
+        index_map.local_index( parent_array_two, 0 ).should be 9
+        index_map.local_index( parent_array_two, 1 ).should be 11
+        index_map.local_index( parent_array_two, 2 ).should be 11
+        index_map.local_index( parent_array_two, 3 ).should be 12
+
+        index_map.local_index( parent_array_three, 0 ).should be 12
+        index_map.local_index( parent_array_three, 1 ).should be 12
+        index_map.local_index( parent_array_three, 2 ).should be 13
+        index_map.local_index( parent_array_three, 3 ).should be 14
+      end
     end
   end
   
@@ -720,45 +752,110 @@ describe ::Array::Compositing::CascadeController do
   context '#parent_reorder' do
     let( :new_parent_one_order ) { [ 3, 2, 0, 1 ] }
     let( :new_local_order ) { index_map.parent_reorder( parent_array_one, new_parent_one_order ) }
-    it 'will reorder maps based on new order' do
-      new_local_order.should == [ nil, nil, nil, nil, 7, 6, 4, 5 ]
+    context 'when parent controls all indexes' do
+      it 'will reorder maps based on new order' do
+        new_local_order.should == [ nil, nil, nil, nil, 6, 7, 5, 4 ]
 
-      index_map.parent_array( 0 ).should be nil
-      index_map.parent_array( 1 ).should be nil
-      index_map.parent_array( 2 ).should be nil
-      index_map.parent_array( 3 ).should be nil
-      index_map.parent_index( 0 ).should be nil
-      index_map.parent_index( 1 ).should be nil
-      index_map.parent_index( 2 ).should be nil
-      index_map.parent_index( 3 ).should be nil
+        index_map.parent_array( 0 ).should be nil
+        index_map.parent_array( 1 ).should be nil
+        index_map.parent_array( 2 ).should be nil
+        index_map.parent_array( 3 ).should be nil
+        index_map.parent_index( 0 ).should be nil
+        index_map.parent_index( 1 ).should be nil
+        index_map.parent_index( 2 ).should be nil
+        index_map.parent_index( 3 ).should be nil
 
-      index_map.parent_array( 4 ).should be parent_array_one
-      index_map.parent_array( 5 ).should be parent_array_one
-      index_map.parent_array( 6 ).should be parent_array_one
-      index_map.parent_array( 7 ).should be parent_array_one
-      index_map.parent_index( 4 ).should be 3
-      index_map.parent_index( 5 ).should be 2
-      index_map.parent_index( 6 ).should be 0
-      index_map.parent_index( 7 ).should be 1
+        index_map.parent_array( 4 ).should be parent_array_one
+        index_map.parent_array( 5 ).should be parent_array_one
+        index_map.parent_array( 6 ).should be parent_array_one
+        index_map.parent_array( 7 ).should be parent_array_one
+        index_map.parent_index( 4 ).should be 3
+        index_map.parent_index( 5 ).should be 2
+        index_map.parent_index( 6 ).should be 0
+        index_map.parent_index( 7 ).should be 1
 
-      index_map.parent_array( 8 ).should be parent_array_two
-      index_map.parent_array( 9 ).should be parent_array_two
-      index_map.parent_array( 10 ).should be parent_array_two
-      index_map.parent_array( 11 ).should be parent_array_two
-      index_map.parent_index( 8 ).should be 0
-      index_map.parent_index( 9 ).should be 1
-      index_map.parent_index( 10 ).should be 2
-      index_map.parent_index( 11 ).should be 3
+        index_map.parent_array( 8 ).should be parent_array_two
+        index_map.parent_array( 9 ).should be parent_array_two
+        index_map.parent_array( 10 ).should be parent_array_two
+        index_map.parent_array( 11 ).should be parent_array_two
+        index_map.parent_index( 8 ).should be 0
+        index_map.parent_index( 9 ).should be 1
+        index_map.parent_index( 10 ).should be 2
+        index_map.parent_index( 11 ).should be 3
 
-      index_map.parent_array( 12 ).should be parent_array_three
-      index_map.parent_array( 13 ).should be parent_array_three
-      index_map.parent_array( 14 ).should be parent_array_three
-      index_map.parent_array( 15 ).should be parent_array_three
-      index_map.parent_index( 12 ).should be 0
-      index_map.parent_index( 13 ).should be 1
-      index_map.parent_index( 14 ).should be 2
-      index_map.parent_index( 15 ).should be 3
+        index_map.parent_array( 12 ).should be parent_array_three
+        index_map.parent_array( 13 ).should be parent_array_three
+        index_map.parent_array( 14 ).should be parent_array_three
+        index_map.parent_array( 15 ).should be parent_array_three
+        index_map.parent_index( 12 ).should be 0
+        index_map.parent_index( 13 ).should be 1
+        index_map.parent_index( 14 ).should be 2
+        index_map.parent_index( 15 ).should be 3
 
+      end
+    end
+
+    # existing: [4, 5, 5, 6]
+    # existing parent: 2
+    # existing local: 5
+    # new parent: 0 # correct - 2 moves to 0 (32 0 1)
+    # new local: 4 # wrong - 
+    # existing parent: 3
+    # existing local: 6
+    # new parent: 1 # correct - 3 moves to 1
+    # new local: 5
+    # parent => local: [4, 5, 4, 5]
+    # local => parent: [nil, nil, nil, nil, nil, 0, 1]
+
+    # 5 and 6 in local can be re-ordered based on the parents they point to
+    # meaning the order of 5 and 6 is determined by the order of parents 2 and 3
+    # the new parent order (3201) tells us 3 comes before 2
+    # so 6, 5 should be the new local order
+
+    context 'when parent controls only some indexes (local replaced or deleted)' do
+      before :each do
+        index_map
+        index_map.local_set( 4 )
+        index_map.local_delete_at( 5 )
+      end
+      it 'will reorder maps based on new order' do
+        new_local_order.should == [ nil, nil, nil, nil, nil, 6, 5 ]
+
+        index_map.parent_array( 0 ).should be nil
+        index_map.parent_array( 1 ).should be nil
+        index_map.parent_array( 2 ).should be nil
+        index_map.parent_array( 3 ).should be nil
+        index_map.parent_index( 0 ).should be nil
+        index_map.parent_index( 1 ).should be nil
+        index_map.parent_index( 2 ).should be nil
+        index_map.parent_index( 3 ).should be nil
+
+        index_map.parent_array( 4 ).should be nil
+        index_map.parent_array( 5 ).should be parent_array_one
+        index_map.parent_array( 6 ).should be parent_array_one
+        index_map.parent_index( 4 ).should be nil
+        index_map.parent_index( 5 ).should be 0
+        index_map.parent_index( 6 ).should be 1
+
+        index_map.parent_array( 7 ).should be parent_array_two
+        index_map.parent_array( 8 ).should be parent_array_two
+        index_map.parent_array( 9 ).should be parent_array_two
+        index_map.parent_array( 10 ).should be parent_array_two
+        index_map.parent_index( 7 ).should be 0
+        index_map.parent_index( 8 ).should be 1
+        index_map.parent_index( 9 ).should be 2
+        index_map.parent_index( 10 ).should be 3
+
+        index_map.parent_array( 11 ).should be parent_array_three
+        index_map.parent_array( 12 ).should be parent_array_three
+        index_map.parent_array( 13 ).should be parent_array_three
+        index_map.parent_array( 14 ).should be parent_array_three
+        index_map.parent_index( 11 ).should be 0
+        index_map.parent_index( 12 ).should be 1
+        index_map.parent_index( 13 ).should be 2
+        index_map.parent_index( 14 ).should be 3
+
+      end
     end
   end
 
@@ -983,15 +1080,25 @@ describe ::Array::Compositing::CascadeController do
   #################
 
   context '#parent_swap' do
+    before :each do
+      index_map.parent_swap( parent_array_one, index_one, index_two )
+    end
     context 'swap in place' do
+      let( :index_one ) { 0 }
+      let( :index_two ) { 0 }
       it 'will do nothing' do
+        index_map.parent_index( 4 ).should be 0
       end
     end
     context 'swap smaller index with greater' do
+      let( :index_one ) { 0 }
+      let( :index_two ) { 3 }
       it 'will swap and adjust maps' do
       end
     end
     context 'swap greater index with smaller' do
+      let( :index_one ) { 3 }
+      let( :index_two ) { 0 }
       it 'will swap and adjust maps' do
       end
     end
