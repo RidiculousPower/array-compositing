@@ -949,6 +949,9 @@ class ::Array::Compositing::CascadeController
                    parent_local_map = parent_local_map( parent_array ),
                    local_parent_map = local_parent_map( parent_array ) )
     
+    local_index_one = nil
+    local_index_two = nil
+    
     unless parent_index_one == parent_index_two
 
       # check whether parent controls either/both of indexes in local
@@ -969,12 +972,14 @@ class ::Array::Compositing::CascadeController
       elsif parent_controls_one
         
         # controlled index points to new parent index
+        local_index_one = parent_local_map[ parent_index_one ]
         local_parent_map[ local_index_one ] = parent_index_two
       
       # 3. parent controls index two
       elsif parent_controls_two
 
         # controlled index points to new parent index
+        local_index_two = parent_local_map[ parent_index_two ]
         local_parent_map[ local_index_two ] = parent_index_one
 
       end
@@ -984,7 +989,7 @@ class ::Array::Compositing::CascadeController
             
     end
     
-    return self
+    return local_index_one, local_index_two
     
   end
 
@@ -995,31 +1000,40 @@ class ::Array::Compositing::CascadeController
   def local_swap( local_index_one, local_index_two )
     
     unless local_index_one == local_index_two
+
+      parent_array_one = nil
+      parent_array_two = nil
       
       # swap in local to array      
-      parent_array_one = @local_index_to_parent[ local_index_one ]
-      parent_array_two = @local_index_to_parent[ local_index_two ]
-      @local_index_to_parent[ local_index_one ] = parent_array_two
-      @local_index_to_parent[ local_index_two ] = parent_array_one
+      if @local_index_to_parent_map
+        parent_array_one = @local_index_to_parent_map[ local_index_one ]
+        parent_array_two = @local_index_to_parent_map[ local_index_two ]
+        @local_index_to_parent_map[ local_index_one ] = parent_array_two
+        @local_index_to_parent_map[ local_index_two ] = parent_array_one
+      end
       
       # if both local indexes have parents
       if parent_array_one and parent_array_two
         
         local_parent_map_one = local_parent_map( parent_array_one )
         parent_local_map_one = parent_local_map( parent_array_one )
+
         parent_index_one = local_parent_map_one[ local_index_one ]
+        
         # if same parent, swap in parent
         if parent_array_one.equal?( parent_array_two )
-          local_parent_map_one.swap( local_index_one, local_index_two )
           parent_index_two = local_parent_map_one[ local_index_two ]
+          local_parent_map_one.swap( local_index_one, local_index_two )
           parent_local_map_one.swap( parent_index_one, parent_index_two )
         # otherwise change ref in each parent
         else
           local_parent_map_two = local_parent_map( parent_array_two )
           parent_local_map_two = parent_local_map( parent_array_two )
           parent_index_two = local_parent_map_two[ local_index_two ]
+
           local_parent_map_one.swap( local_index_one, local_index_two )
           local_parent_map_two.swap( local_index_one, local_index_two )
+
           parent_local_map_two[ parent_index_one ] = local_index_two
           parent_local_map_two[ parent_index_two ] = local_index_one
         end
@@ -1029,9 +1043,12 @@ class ::Array::Compositing::CascadeController
 
         local_parent_map_one = local_parent_map( parent_array_one )
         parent_local_map_one = parent_local_map( parent_array_one )
-        local_parent_map_one.swap( local_index_one, local_index_two )
         parent_index_one = local_parent_map_one[ local_index_one ]
+
+        local_parent_map_one.swap( local_index_one, local_index_two )
+
         parent_local_map_one[ parent_index_one ] = local_index_two
+        local_parent_map_one[ local_index_two ] = parent_index_one
 
       # if only index two has parent
       elsif parent_array_two
@@ -1039,7 +1056,9 @@ class ::Array::Compositing::CascadeController
         local_parent_map_two = local_parent_map( parent_array_two )
         parent_local_map_two = parent_local_map( parent_array_two )
         parent_index_two = local_parent_map_two[ local_index_two ]
+
         parent_local_map_two[ parent_index_two ] = local_index_one
+        local_parent_map_two[ local_index_one ] = parent_index_two
 
       end
         
