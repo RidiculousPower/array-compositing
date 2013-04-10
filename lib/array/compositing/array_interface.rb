@@ -33,11 +33,10 @@ module ::Array::Compositing::ArrayInterface
 
     super( configuration_instance, *array_initialization_args )
     
-    @parent_index_map = ::Array::Compositing::CascadeController.new( self )
+    @cascade_controller = ::Array::Compositing::CascadeController.new( self )
     
     # arrays from which we inherit
     @parents = ::Array::Compositing::CascadeController::ParentChildArray.new
-    
     # arrays that inherit from us
     @children = ::Array::Compositing::CascadeController::ParentChildArray.new
 
@@ -45,9 +44,9 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
-  ######################
-  #  parent_index_map  #
-  ######################
+  ########################
+  #  cascade_controller  #
+  ########################
 
   ###
   # @!attribute [r]
@@ -56,7 +55,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #        The parent index map tracking array instance.
   #
-  attr_reader :parent_index_map
+  attr_reader :cascade_controller
 
   ###################################  Non-Cascading Behavior  ####################################
 
@@ -161,7 +160,7 @@ module ::Array::Compositing::ArrayInterface
     
     unless @parents.include?( parent_array )
       @parents.push( parent_array.register_child( self ) )
-      @parent_index_map.register_parent( parent_array.parent_index_map )
+      @cascade_controller.register_parent( parent_array )
       # insert placeholders so we don't have to stub :count, etc.
       # we want undecorated because we are just inserting placeholders, hooks are called at lazy-load
       parent_array.size.times { |this_time| undecorated_insert( insert_at_index, nil ) }
@@ -188,8 +187,7 @@ module ::Array::Compositing::ArrayInterface
   #
   def unregister_parent( parent_array )
     
-    if local_indexes_to_delete = @parent_index_map.unregister_parent( parent_array.parent_index_map )
-      puts 'local indexes: ' + local_indexes_to_delete.to_s
+    if local_indexes_to_delete = @cascade_controller.unregister_parent( parent_array )
       delete_at_indexes( *local_indexes_to_delete )
     end
     
@@ -548,8 +546,8 @@ module ::Array::Compositing::ArrayInterface
 
   def []( local_index )
 
-    return @parent_index_map.requires_lookup?( local_index ) ? lazy_set_parent_element_in_self( local_index ) 
-                                                             : super
+    return @cascade_controller.requires_lookup?( local_index ) ? lazy_set_parent_element_in_self( local_index ) 
+                                                               : super
 
   end
 
@@ -579,7 +577,7 @@ module ::Array::Compositing::ArrayInterface
 
   def delete_at( local_index )
     
-    @parent_index_map.local_delete_at( local_index )
+    @cascade_controller.local_delete_at( local_index )
     deleted_object = non_cascading_delete_at( local_index )
     @children.each { |this_array| this_array.update_for_parent_delete_at( self, local_index, deleted_object ) }
 
@@ -596,29 +594,35 @@ module ::Array::Compositing::ArrayInterface
     # We can't simply shuffle the internal array (like Array::Hooked) because the index maps will be corrupted. 
     # We can declare elements have moved, but to do so we need to know where they moved.
     # To achieve this, we shuffle an array of our indexes and then use the result to track shuffled elements.
-    shuffled_index_order = @parent_index_map.shuffle( random: random_number_generator )
+    shuffled_index_order = @cascade_controller.local_shuffle( random: random_number_generator )
     
-    existing_data = @internal_array.dup
-    new_order_index_array.each_with_index do |this_new_index, this_existing_index|
-      @internal_array[ this_new_index ] = reorder_array[ existing_data ]
+    existing_data = @internal_array
+    @internal_array = [ ]
+    shuffled_index_order.each_with_index do |this_new_index, this_existing_index|
+      @internal_array[ this_new_index ] = existing_data[ this_existing_index ]
     end
+    
+    @children.each { |this_array| this_array.update_for_parent_reorder( self, shuffled_index_order ) }
     
     return self
     
   end
-
+  
   #############
   #  reorder  #
   #############
   
-  def reorder( new_order_index_array )
+  def reorder( new_local_index_order_array )
     
-    @parent_index_map.reorder( new_order_index_array )
+    @cascade_controller.local_reorder( new_local_index_order_array )
 
-    existing_data = @internal_array.dup
-    new_order_index_array.each_with_index do |this_new_index, this_existing_index|
-      @internal_array[ this_new_index ] = reorder_array[ existing_data ]
+    existing_data = @internal_array
+    @internal_array = [ ]
+    new_local_index_order_array.each_with_index do |this_new_index, this_existing_index|
+      @internal_array[ this_new_index ] = existing_data[ this_existing_index ]
     end
+
+    @children.each { |this_array| this_array.update_for_parent_reorder( self, new_local_index_order_array ) }
     
     return self
         
@@ -630,7 +634,7 @@ module ::Array::Compositing::ArrayInterface
   
   def move( index, new_index )
     
-    @parent_index_map.local_move( index, new_index )
+    @cascade_controller.local_move( index, new_index )
     
     @internal_array[ new_index ] = object_to_move
     
@@ -646,7 +650,7 @@ module ::Array::Compositing::ArrayInterface
   
   def swap( index_one, index_two )
     
-    @parent_index_map.local_swap( index_one, index_two )
+    @cascade_controller.local_swap( index_one, index_two )
     
     index_two_object = @internal_array[ index_two ]
     @internal_array[ index_two ] = @internal_array[ index_one ]
@@ -708,30 +712,14 @@ module ::Array::Compositing::ArrayInterface
   def load_parent_state( parent_array = nil )
 
     #
-    # We have to check for @parent_index_map.
+    # We have to check for @cascade_controller.
     #
     # This is because of cases where duplicate instance is created (like #uniq) 
     # and initialization not called during dup process.
     #
-    if @parent_index_map
-    
-      if parent_array
-
-        @parent_index_map.indexes_requiring_lookup.each do |this_local_index, this_parent_struct|
-          if this_parent_struct.parent_map.array_instance.equal?( parent_array )
-            lazy_set_parent_element_in_self( this_local_index )
-          end
-        end
-      
-      else
-      
-        @parent_index_map.indexes_requiring_lookup.each do |this_local_index, this_parent_struct|
-          lazy_set_parent_element_in_self( this_local_index )
-        end
-      
-      end
-        
-    end
+    @cascade_controller.each_index_requiring_lookup( parent_array ) do |this_local_index|
+      lazy_set_parent_element_in_self( this_local_index )
+    end if @cascade_controller
     
     return self
     
@@ -746,7 +734,7 @@ module ::Array::Compositing::ArrayInterface
     did_set = false
     
     if did_set = super
-      @parent_index_map.local_set( local_index )
+      @cascade_controller.local_set( local_index )
     end
     
     return did_set
@@ -760,11 +748,10 @@ module ::Array::Compositing::ArrayInterface
   def perform_single_object_insert_between_hooks( requested_local_index, object )
 
     if local_index = super
-      @parent_index_map.local_insert( local_index, 1 )
-      @children.each { |this_array| this_array.update_for_parent_insert( self, 
-                                                                         requested_local_index, 
-                                                                         local_index, 
-                                                                         object ) }
+      @cascade_controller.local_insert( local_index, 1 )
+      @children.each do |this_array|
+        this_array.update_for_parent_insert( self, requested_local_index, local_index, object )
+      end
     end
     
     return local_index
@@ -779,36 +766,29 @@ module ::Array::Compositing::ArrayInterface
   # Perform look-up of local index in parent or load value delivered from parent
   #   when parent delete was prevented in child.
   #
-  # @overload lazy_set_parent_element_in_self( local_index, optional_object, ... )
-  #
-  #   @param [Integer] local_index
-  #
-  #          Index in instance for which value requires look-up/set.
-  #
-  #   @param [Object] optional_object
-  #
-  #          If we deleted in parent and then child delete hook prevented local delete
-  #          then we have an object passed since our parent can no longer provide it
+  # @param [Integer] local_index
+  # 
+  #        Index in instance for which value requires look-up/set.
+  # 
+  # @param [Object] optional_object
+  # 
+  #        If we deleted in parent and then child delete hook prevented local delete
+  #        then we have an object passed since our parent can no longer provide it
   #
   # @return [Object]
   #
   #         Lazy set value.
   #
-  def lazy_set_parent_element_in_self( local_index, *optional_object )
+  def lazy_set_parent_element_in_self( local_index, optional_object = nil, passed_optional_object = false )
 
     object = nil
     
-    if @parent_index_map.requires_lookup?( local_index )
+    if @cascade_controller.requires_lookup?( local_index )
 
-      parent_index_struct = @parent_index_map.parent_index( local_index )
-      parent_array = parent_index_struct.parent_map.array_instance
-          
-      case optional_object.count
-        when 0
-          object = parent_array[ parent_index_struct.parent_index ]
-        when 1
-          object = optional_object[ 0 ]
-      end
+      parent_index = @cascade_controller.parent_index( local_index )
+      parent_array = @cascade_controller.parent_array( local_index )
+      
+      object = passed_optional_object ? optional_object : parent_array[ parent_index ]
         
       # We call hooks manually so that we can do a direct undecorated set.
       # This is because we already have an object we loaded as a place-holder that we are now updating.
@@ -818,7 +798,7 @@ module ::Array::Compositing::ArrayInterface
         object = child_pre_set_hook( local_index, object, false, parent_array )
         if ::Array::Compositing::DoNotInherit === object
           delete_at( local_index )
-          return lazy_set_parent_element_in_self( local_index, *optional_object )
+          return lazy_set_parent_element_in_self( local_index, optional_object, passed_optional_object )
         end
       end
     
@@ -826,7 +806,7 @@ module ::Array::Compositing::ArrayInterface
     
       undecorated_set( local_index, object )
 
-      @parent_index_map.looked_up!( local_index )
+      @cascade_controller.looked_up!( local_index )
       
       post_set_hook( local_index, object, false ) unless @without_hooks
       child_post_set_hook( local_index, object, false, parent_array ) unless @without_child_hooks
@@ -866,9 +846,8 @@ module ::Array::Compositing::ArrayInterface
   #
   def update_for_parent_set( parent_array, parent_index, object )
     
-    parent_index_map = parent_array.parent_index_map
-    if @parent_index_map.parent_controls_parent_index?( parent_index_map, parent_index )
-      local_index = @parent_index_map.parent_set( parent_index_map, parent_index )
+    if @cascade_controller.parent_controls_parent_index?( parent_array, parent_index )
+      local_index = @cascade_controller.parent_set( parent_array, parent_index )
       undecorated_set( local_index, nil )
       @children.each { |this_array| this_array.update_for_parent_set( local_index, object ) }
     end
@@ -904,7 +883,7 @@ module ::Array::Compositing::ArrayInterface
   #
   def update_for_parent_insert( parent_array, requested_parent_index, parent_index, object )
 
-    local_index = @parent_index_map.parent_insert( parent_array.parent_index_map, parent_index, 1 )
+    local_index = @cascade_controller.parent_insert( parent_array, parent_index, 1 )
     undecorated_insert( local_index, nil )
     @children.each { |this_array| this_array.update_for_parent_insert( self, local_index, local_index, object ) }
 
@@ -938,16 +917,14 @@ module ::Array::Compositing::ArrayInterface
   def update_for_parent_delete_at( parent_array, parent_index, object )
 
     did_delete = false
-    
-    parent_index_map = parent_array.parent_index_map
-    
-    if @parent_index_map.parent_controls_parent_index?( parent_index_map, parent_index )
-      
-      local_index = @parent_index_map.local_index( parent_index_map, parent_index )
+
+    if @cascade_controller.parent_controls_parent_index?( parent_array, parent_index )
+
+      local_index = @cascade_controller.local_index( parent_array, parent_index )
       
       if @without_child_hooks || child_pre_delete_hook( local_index, parent_array )
 
-        @parent_index_map.parent_delete_at( parent_index_map, parent_index )
+        @cascade_controller.parent_delete_at( parent_array, parent_index )
 
         # I'm unclear why if we call perform_delete_between_hooks (including through non_cascading_delete_at)
         # we end up smashing the last index's lazy lookup value, turning it false
@@ -963,13 +940,56 @@ module ::Array::Compositing::ArrayInterface
         
       else
 
-        lazy_set_parent_element_in_self( local_index, object ) if @parent_index_map.requires_lookup?( local_index )
-      
+        if @cascade_controller.requires_lookup?( local_index )
+          lazy_set_parent_element_in_self( local_index, object, true )
+        end
+        
       end
     
     end
-    
+
     return did_delete
+    
+  end
+
+  ###############################
+  #  update_for_parent_reorder  #
+  ###############################
+  
+  def update_for_parent_reorder( parent_array, new_parent_index_order_array )
+
+    new_local_index_order_array = @cascade_controller.parent_reorder( parent_array, new_parent_index_order_array )
+    
+    existing_data = @internal_array
+    @internal_array = [ ]
+    new_local_index_order_array.each_with_index do |this_new_local_index, this_existing_local_index|
+      @internal_array[ this_new_local_index ] = existing_data[ this_existing_local_index ]
+    end
+
+    @children.each { |this_array| this_array.update_for_parent_reorder( self, new_local_index_order_array ) }
+
+    return self
+
+  end
+
+  ############################
+  #  update_for_parent_move  #
+  ############################
+
+  def update_for_parent_move( parent_array, index, new_index )
+
+
+    return self
+
+  end
+
+  ############################
+  #  update_for_parent_swap  #
+  ############################
+
+  def update_for_parent_swap( parent_array, index, new_index )
+    
+    return self
     
   end
 

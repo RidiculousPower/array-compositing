@@ -23,13 +23,13 @@ describe ::Array::Compositing::CascadeController do
   end
 
   let( :parent_array_one ) { [ :P1_0, :P1_1, :P1_2, :P1_3 ] }
-  let( :parent_index_map_one ) { ::Array::Compositing::CascadeController.new( parent_array_one ) }
+  let( :cascade_controller_one ) { ::Array::Compositing::CascadeController.new( parent_array_one ) }
 
   let( :parent_array_two ) { [ :P2_0, :P2_1, :P2_2, :P2_3 ] }
-  let( :parent_index_map_two ) { ::Array::Compositing::CascadeController.new( parent_array_two ) }
+  let( :cascade_controller_two ) { ::Array::Compositing::CascadeController.new( parent_array_two ) }
 
   let( :parent_array_three ) { [ :P3_0, :P3_1, :P3_2, :P3_3 ] }
-  let( :parent_index_map_three ) { ::Array::Compositing::CascadeController.new( parent_array_three ) }
+  let( :cascade_controller_three ) { ::Array::Compositing::CascadeController.new( parent_array_three ) }
   
   let( :parent_one_insert_index ) { nil }
   let( :parent_two_insert_index ) { nil }
@@ -42,9 +42,9 @@ describe ::Array::Compositing::CascadeController do
   context '#array_instance' do
     it 'returns the instance it controls' do
       index_map.array_instance.should be array_instance
-      parent_index_map_one.array_instance.should be parent_array_one
-      parent_index_map_two.array_instance.should be parent_array_two
-      parent_index_map_three.array_instance.should be parent_array_three
+      cascade_controller_one.array_instance.should be parent_array_one
+      cascade_controller_two.array_instance.should be parent_array_two
+      cascade_controller_three.array_instance.should be parent_array_three
     end
   end
   
@@ -385,17 +385,7 @@ describe ::Array::Compositing::CascadeController do
       index_map.requires_lookup?( 15 ).should be true
     end
   end
-  
-  ##############################
-  #  indexes_requiring_lookup  #
-  ##############################
-  
-  context '#indexes_requiring_lookup' do
-    it 'will return an array of indexes not yet looked up' do
-      index_map.indexes_requiring_lookup.should == [ 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 ]
-    end
-  end
-  
+    
   ################
   #  looked_up!  #
   ################
@@ -754,7 +744,7 @@ describe ::Array::Compositing::CascadeController do
     let( :new_local_order ) { index_map.parent_reorder( parent_array_one, new_parent_one_order ) }
     context 'when parent controls all indexes' do
       it 'will reorder maps based on new order' do
-        new_local_order.should == [ nil, nil, nil, nil, 6, 7, 5, 4 ]
+        new_local_order.should == [ nil, nil, nil, nil, 7, 6, 4, 5 ]
 
         index_map.parent_array( 0 ).should be nil
         index_map.parent_array( 1 ).should be nil
@@ -769,10 +759,10 @@ describe ::Array::Compositing::CascadeController do
         index_map.parent_array( 5 ).should be parent_array_one
         index_map.parent_array( 6 ).should be parent_array_one
         index_map.parent_array( 7 ).should be parent_array_one
-        index_map.parent_index( 4 ).should be 3
-        index_map.parent_index( 5 ).should be 2
-        index_map.parent_index( 6 ).should be 0
-        index_map.parent_index( 7 ).should be 1
+        index_map.parent_index( 4 ).should be 0
+        index_map.parent_index( 5 ).should be 1
+        index_map.parent_index( 6 ).should be 2
+        index_map.parent_index( 7 ).should be 3
 
         index_map.parent_array( 8 ).should be parent_array_two
         index_map.parent_array( 9 ).should be parent_array_two
@@ -817,8 +807,8 @@ describe ::Array::Compositing::CascadeController do
         index_map.parent_array( 5 ).should be parent_array_one
         index_map.parent_array( 6 ).should be parent_array_one
         index_map.parent_index( 4 ).should be nil
-        index_map.parent_index( 5 ).should be 0
-        index_map.parent_index( 6 ).should be 1
+        index_map.parent_index( 5 ).should be 2
+        index_map.parent_index( 6 ).should be 3
 
         index_map.parent_array( 7 ).should be parent_array_two
         index_map.parent_array( 8 ).should be parent_array_two
