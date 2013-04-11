@@ -625,7 +625,7 @@ module ::Array::Compositing::ArrayInterface
     @children.each { |this_array| this_array.update_for_parent_reorder( self, new_local_index_order_array ) }
     
     return self
-        
+    
   end
   
   ##########
@@ -634,11 +634,43 @@ module ::Array::Compositing::ArrayInterface
   
   def move( index, new_index )
     
-    @cascade_controller.local_move( index, new_index )
+    # if we have less elements in self than the index we are inserting at
+    # we need to make sure the nils inserted cascade
     
-    @internal_array[ new_index ] = object_to_move
+    elements = size
     
-    @children.each { |this_child| this_child.update_for_parent_move( index, new_index ) }
+    if index > elements or -index > elements
+
+      if new_index > elements
+        nils_created = new_index - elements + 1
+        nils_created.times { |this_time| push( nil ) }
+      elsif -new_index > elements
+        nils_created = -new_index - elements + 1
+        nils_created.times { |this_time| unshift( nil ) }
+      end
+
+      insert( new_index, nil )
+
+    else
+
+      if new_index > elements
+        nils_created = new_index - elements + 1
+        nils_created.times { |this_time| push( nil ) }
+      elsif -new_index > elements
+        nils_created = -new_index - elements + 1
+        nils_created.times { |this_time| unshift( nil ) }
+        index += nils_created
+        new_index -= 1
+      end
+
+      object = @internal_array.delete_at( index )
+
+      @cascade_controller.local_move( index, new_index )
+      @internal_array.insert( new_index, object )
+      @children.each { |this_child| this_child.update_for_parent_move( self, index, new_index ) }
+
+    end
+    
     
     return self
     
@@ -650,13 +682,40 @@ module ::Array::Compositing::ArrayInterface
   
   def swap( index_one, index_two )
     
-    @cascade_controller.local_swap( index_one, index_two )
+    elements = size
     
-    index_two_object = @internal_array[ index_two ]
-    @internal_array[ index_two ] = @internal_array[ index_one ]
-    @internal_array[ index_one ] = index_two_object
+    if index_one > elements or -index_one > elements
+
+      if index_two > elements
+        nils_created = index_two - elements + 1
+        nils_created.times { |this_time| push( nil ) }
+      elsif -index_two > elements
+        nils_created = -index_two - elements + 1
+        nils_created.times { |this_time| unshift( nil ) }
+      end
+
+      insert( index_two, nil )
+
+    else
+
+      if index_two > elements
+        nils_created = index_two - elements + 1
+        nils_created.times { |this_time| push( nil ) }
+      elsif -index_two > elements
+        nils_created = -index_two - elements
+        nils_created.times { |this_time| unshift( nil ) }
+        index_one += nils_created
+      end
     
-    @children.each { |this_child| this_child.update_for_parent_swap( index_one, index_two ) }
+      @cascade_controller.local_swap( index_one, index_two )
+    
+      index_two_object = @internal_array[ index_two ]
+      @internal_array[ index_two ] = @internal_array[ index_one ]
+      @internal_array[ index_one ] = index_two_object
+    
+      @children.each { |this_child| this_child.update_for_parent_swap( self, index_one, index_two ) }
+    
+    end
     
     return self
     
@@ -976,8 +1035,12 @@ module ::Array::Compositing::ArrayInterface
   #  update_for_parent_move  #
   ############################
 
-  def update_for_parent_move( parent_array, index, new_index )
+  def update_for_parent_move( parent_array, existing_parent_index, new_parent_index )
 
+    existing_local_index = @cascade_controller.local_index( parent_array, existing_parent_index )
+    new_local_index = @cascade_controller.parent_move( parent_array, existing_parent_index, new_parent_index )
+    @internal_array.insert( new_local_index, @internal_array.delete_at( existing_local_index ) )
+    @children.each { |this_child| this_child.update_for_parent_move( self, index, new_index ) }
 
     return self
 

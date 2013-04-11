@@ -856,8 +856,9 @@ class ::Array::Compositing::CascadeController
   ###################
   
   def local_reorder( new_local_order )
-    
+
     if @local_index_to_parent_map
+      
       new_local_to_parent_map = @local_index_to_parent_map.dup
       this_existing_local_index = -1
       @local_index_to_parent_map.collect! do |this_parent_array| 
@@ -865,22 +866,24 @@ class ::Array::Compositing::CascadeController
         this_new_parent_array = new_local_to_parent_map[ this_new_local_index ]
         this_new_parent_array
       end
-    
+      
       @parent_local_maps.each do |this_parent_array_id, this_parent_local_map|
         this_existing_parent_index = -1
         this_parent_local_map.collect! do |this_existing_local_index|
           this_new_local_index = new_local_order[ this_existing_local_index ]
-          @local_parent_maps[ this_parent_array_id ][ this_existing_parent_index += 1 ] = this_new_local_index
+          @local_parent_maps[ this_parent_array_id ][ this_new_local_index ] = this_existing_parent_index += 1
           this_new_local_index
         end
       end
     
-      existing_requires_lookup = @requires_lookup.dup
+      existing_requires_lookup = @requires_lookup
+      @requires_lookup = [ ]
       new_local_order.each_with_index do |this_new_local_index, this_existing_local_index|
         if this_new_local_index
           @requires_lookup[ this_new_local_index ] = existing_requires_lookup[ this_existing_local_index ]
         end
       end
+      
     end
     
     return new_local_order
@@ -931,28 +934,33 @@ class ::Array::Compositing::CascadeController
     
     # if we're asked to move in place we don't need to do anything
     unless new_local_index == existing_local_index
-
-      # adjust local => parent maps by moving index (parent stays the same)
-      @local_parent_maps.each do |this_parent_array_id, this_local_parent_map|
-        this_local_parent_map.insert( new_local_index, this_local_parent_map.delete_at( existing_local_index ) )
-      end
-
-      # adjust local => parent array map by moving index (parent array stays the same)
-      @local_index_to_parent_map.insert( new_local_index, @local_index_to_parent_map.delete_at( existing_local_index ) )
-
-      # adjust parent => local maps by renumbering and filling in from local => parent
-      @parent_local_maps.each do |this_parent_array_id, this_parent_local_map|
-        this_parent_local_map.renumber_for_move( existing_local_index, new_local_index )
-        this_local_parent_map = @local_parent_maps[ this_parent_array_id ]
-        this_local_parent_map.each_range( existing_local_index, 
-                                          new_local_index ) do |this_parent_index, this_local_index|
-          # only set parent index if one is already set for this local index
-          this_parent_local_map[ this_parent_index ] = this_local_index if this_parent_index
+      
+      if @local_index_to_parent_map
+        
+        # adjust local => parent maps by moving index (parent stays the same)
+        @local_parent_maps.each do |this_parent_array_id, this_local_parent_map|
+          this_local_parent_map.insert( new_local_index, this_local_parent_map.delete_at( existing_local_index ) )
         end
+
+        # adjust local => parent array map by moving index (parent array stays the same)
+        parent_array = @local_index_to_parent_map.delete_at( existing_local_index )
+        @local_index_to_parent_map.insert( new_local_index, parent_array )
+
+        # adjust parent => local maps by renumbering and filling in from local => parent
+        @parent_local_maps.each do |this_parent_array_id, this_parent_local_map|
+          this_parent_local_map.renumber_for_move( existing_local_index, new_local_index )
+          this_local_parent_map = @local_parent_maps[ this_parent_array_id ]
+          this_local_parent_map.each_range( existing_local_index, 
+                                            new_local_index ) do |this_parent_index, this_local_index|
+            # only set parent index if one is already set for this local index
+            this_parent_local_map[ this_parent_index ] = this_local_index if this_parent_index
+          end
+        end
+    
+        @requires_lookup.insert( new_local_index, @requires_lookup.delete_at( existing_local_index ) )
+      
       end
-    
-      @requires_lookup.insert( new_local_index, @requires_lookup.delete_at( existing_local_index ) )
-    
+      
     end
     
     return new_local_index
@@ -1084,10 +1092,12 @@ class ::Array::Compositing::CascadeController
 
       end
 
-      requires_lookup_one = @requires_lookup[ local_index_one ]
-      @requires_lookup[ local_index_one ] = @requires_lookup[ local_index_two ]
-      @requires_lookup[ local_index_two ] = requires_lookup_one
-        
+      if @requires_lookup
+        requires_lookup_one = @requires_lookup[ local_index_one ]
+        @requires_lookup[ local_index_one ] = @requires_lookup[ local_index_two ]
+        @requires_lookup[ local_index_two ] = requires_lookup_one
+      end
+      
     end
     
     return self

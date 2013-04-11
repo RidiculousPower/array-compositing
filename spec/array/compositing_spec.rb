@@ -1087,12 +1087,14 @@ describe ::Array::Compositing do
     let( :parent_elements ) { [ :A, :B, :C, :D ] }
     let( :new_order ) { [ 3, 0, 1, 2 ] }
     let( :reordered_array ) { parent_array.reorder( new_order ) }
+    let( :reordered_child_array ) { child_array.reorder( new_order ) }
     it 'can re-order elements in parent, causing child to re-order' do
       reordered_array.should == [ :B, :C, :D, :A ]
       child_array.should == reordered_array
     end
     it 'can re-order elements in child without affecting parent elements' do
-      
+      parent_array.should == [ :A, :B, :C, :D ]
+      reordered_child_array.should == [ :B, :C, :D, :A ]
     end
   end
   
@@ -1101,8 +1103,129 @@ describe ::Array::Compositing do
   ##########
 
   context '#move' do
-    it 'can move indexes' do
-      pending
+    let( :parent_elements ) { [ :A, :B, :C, :D ] }
+    context 'for parent' do
+      context 'when both indexes are in range' do
+        before :each do
+          child_array
+          parent_array.move( 1, 3 )
+        end
+        it 'can move indexes' do
+          parent_array.should == [ :A, :C, :D, :B ]
+          child_array.should == parent_array
+        end
+      end
+      context 'when one index is above length' do
+        context 'index one' do
+          before :each do
+            child_array
+            parent_array.move( 5, 1 )
+          end
+          it 'can move indexes, inserting nil as appropriate' do
+            parent_array.should == [ :A, nil, :B, :C, :D ]
+            child_array.should == parent_array
+          end
+        end
+        context 'index two' do
+          before :each do
+            child_array
+            parent_array.move( 1, 5 )
+          end
+          it 'can move indexes, inserting nil as appropriate' do
+            parent_array.should == [ :A, :C, :D, nil, nil, :B ]
+            child_array.should == parent_array
+          end
+        end
+      end
+      context 'when one index is below 0' do
+        context 'index one' do
+          before :each do
+            child_array
+            parent_array.move( -5, 1 )
+          end
+          it 'can move indexes, inserting nil as appropriate' do
+            parent_array.should == [ :A, nil, :B, :C, :D ]
+            child_array.should == parent_array
+          end
+        end
+        context 'index two' do
+          before :each do
+            child_array
+            parent_array.move( 1, -5 )
+          end
+          it 'can move indexes, inserting nil as appropriate' do
+            parent_array.should == [ :B, nil, nil, :A, :C, :D ]
+            child_array.should == parent_array
+          end
+        end
+      end
+      context 'when both indexes are below 0' do
+        before :each do
+          child_array
+          parent_array.move( -7, -5 )
+        end
+        it 'can move indexes, inserting nil as appropriate' do
+          parent_array.should == [ nil, nil, nil, :A, :B, :C, :D ]
+          child_array.should == parent_array
+        end
+      end
+      context 'when both indexes are above length' do
+        before :each do
+          child_array
+          parent_array.move( 7, 5 )
+        end
+        it 'can move indexes, inserting nil as appropriate' do
+          parent_array.should == [ :A, :B, :C, :D, nil, nil, nil ]
+          child_array.should == parent_array
+        end
+      end
+    end
+    context 'for child' do
+      context 'when both indexes are in range' do
+        before :each do
+          child_array.move( 1, 3 )
+        end
+        it 'can move indexes in child without affecting parent' do
+          parent_array.should == [ :A, :B, :C, :D ]
+          child_array.should == [ :A, :C, :D, :B ]
+        end
+      end
+      context 'when one index is above length' do
+        before :each do
+          child_array.move( 1, 5 )
+        end
+        it 'can move indexes, inserting nil as appropriate in child without affecting parent' do
+          parent_array.should == [ :A, :B, :C, :D ]
+          child_array.should == [ :A, :C, :D, nil, nil, :B ]
+        end
+      end
+      context 'when one index is below 0' do
+        before :each do
+          child_array.move( 1, 5 )
+        end
+        it 'can move indexes, inserting nil as appropriate in child without affecting parent' do
+          parent_array.should == [ :A, :B, :C, :D ]
+          child_array.should == [ :A, :C, :D, nil, nil, :B ]
+        end
+      end
+      context 'when both indexes are below 0' do
+        before :each do
+          child_array.move( -7, -5 )
+        end
+        it 'can move indexes, inserting nil as appropriate' do
+          parent_array.should == [ :A, :B, :C, :D ]
+          child_array.should == [ nil, nil, nil, :A, :B, :C, :D ]
+        end
+      end
+      context 'when both indexes are above length' do
+        before :each do
+          child_array.move( 7, 5 )
+        end
+        it 'can move indexes, inserting nil as appropriate' do
+          parent_array.should == [ :A, :B, :C, :D ]
+          child_array.should == [ :A, :B, :C, :D, nil, nil, nil ]
+        end
+      end
     end
   end
 
@@ -1111,8 +1234,151 @@ describe ::Array::Compositing do
   ##########
 
   context '#swap' do
-    it 'can swap indexes' do
-      pending
+    let( :parent_elements ) { [ :A, :B, :C, :D ] }
+    context 'for parent' do
+      context 'when both indexes are in range' do
+        before :each do
+          child_array
+          parent_array.swap( 1, 3 )
+        end
+        it 'can swap indexes' do
+          parent_array.should == [ :A, :D, :C, :B ]
+          child_array.should == parent_array
+        end
+      end
+      context 'when one index is above length' do
+        context 'index one' do
+          before :each do
+            child_array
+            parent_array.swap( 5, 1 )
+          end
+          it 'can swap indexes, inserting nil as appropriate' do
+            parent_array.should == [ :A, nil, :B, :C, :D ]
+            child_array.should == parent_array
+          end
+        end
+        context 'index two' do
+          before :each do
+            child_array
+            parent_array.swap( 1, 5 )
+          end
+          it 'can swap indexes, inserting nil as appropriate' do
+            parent_array.should == [ :A, nil, :C, :D, nil, :B ]
+            child_array.should == parent_array
+          end
+        end
+      end
+      context 'when one index is below 0' do
+        context 'index one' do
+          before :each do
+            child_array
+            parent_array.swap( -5, 1 )
+          end
+          it 'can swap indexes, inserting nil as appropriate' do
+            parent_array.should == [ :A, nil, :B, :C, :D ]
+            child_array.should == parent_array
+          end
+        end
+        context 'index two' do
+          before :each do
+            child_array
+            parent_array.swap( 1, -5 )
+          end
+          it 'can swap indexes, inserting nil as appropriate' do
+            parent_array.should == [ :B, :A, nil, :C, :D ]
+            child_array.should == parent_array
+          end
+        end
+      end
+      context 'when both indexes are below 0' do
+        before :each do
+          child_array
+          parent_array.swap( -7, -5 )
+        end
+        it 'can move indexes, inserting nil as appropriate' do
+          parent_array.should == [ nil, nil, nil, :A, :B, :C, :D ]
+          child_array.should == parent_array
+        end
+      end
+      context 'when both indexes are above length' do
+        before :each do
+          child_array
+          parent_array.swap( 7, 5 )
+        end
+        it 'can move indexes, inserting nil as appropriate' do
+          parent_array.should == [ :A, :B, :C, :D, nil, nil, nil ]
+          child_array.should == parent_array
+        end
+      end
+    end
+    context 'for child' do
+      context 'when both indexes are in range' do
+        before :each do
+          child_array.swap( 1, 3 )
+        end
+        it 'can swap indexes in child without affecting parent' do
+          parent_array.should == [ :A, :B, :C, :D ]
+          child_array.should == [ :A, :D, :C, :B ]
+        end
+      end
+      context 'when one index is above length' do
+        context 'index one' do
+          before :each do
+            child_array.swap( 5, 1 )
+          end
+          it 'can swap indexes, inserting nil as appropriate in child without affecting parent' do
+            parent_array.should == [ :A, :B, :C, :D ]
+            child_array.should == [ :A, nil, :B, :C, :D ]
+          end
+        end
+        context 'index two' do
+          before :each do
+            child_array.swap( 1, 5 )
+          end
+          it 'can swap indexes, inserting nil as appropriate in child without affecting parent' do
+            parent_array.should == [ :A, :B, :C, :D ]
+            child_array.should == [ :A, nil, :C, :D, nil, :B ]
+          end
+        end
+      end
+      context 'when one index is below 0' do
+        context 'index one' do
+          before :each do
+            child_array.swap( -5, 1 )
+          end
+          it 'can swap indexes, inserting nil as appropriate in child without affecting parent' do
+            parent_array.should == [ :A, :B, :C, :D ]
+            child_array.should == [ :A, nil, :B, :C, :D ]
+          end
+        end
+        context 'index two' do
+          before :each do
+            child_array.swap( 1, -5 )
+          end
+          it 'can swap indexes, inserting nil as appropriate in child without affecting parent' do
+            parent_array.should == [ :A, :B, :C, :D ]
+            child_array.should == [ :B, :A, nil, :C, :D ]
+          end
+        end
+      end
+      context 'when both indexes are below 0' do
+        before :each do
+          child_array.swap( -7, -5 )
+        end
+        it 'can move indexes, inserting nil as appropriate' do
+          parent_array.should == [ :A, :B, :C, :D ]
+          child_array.should == [ nil, nil, nil, :A, :B, :C, :D ]
+        end
+      end
+      context 'when both indexes are above length' do
+        before :each do
+          child_array.swap( 7, 5 )
+        end
+        it 'can move indexes, inserting nil as appropriate' do
+          parent_array.should == [ :A, :B, :C, :D ]
+          child_array.should == [ :A, :B, :C, :D, nil, nil, nil ]
+        end
+      end
     end
   end
     
