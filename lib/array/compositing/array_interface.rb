@@ -553,6 +553,88 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
+  #############
+  #  collect  #
+  #############
+  
+  ###
+  # Invokes block once for each element of self. Creates a new array containing the values 
+  #   returned by the block. See also Enumerable#collect.
+  #   If no block is given, an enumerator is returned instead.
+  #
+  def collect( & block )
+    
+    load_parent_state
+    
+    return super
+
+  end
+
+  #################
+  #  combination  #
+  #################
+  
+  ###
+  # When invoked with a block, yields all combinations of length n of elements from ary and 
+  #   then returns ary itself. The implementation makes no guarantees about the order in 
+  #   which the combinations are yielded.
+  #   If no block is given, an enumerator is returned instead.
+  #
+  def combination( number, & block )
+
+    load_parent_state
+    
+    return super
+
+  end
+
+  #############
+  #  compact  #
+  #############
+  
+  ###
+  # Returns a copy of self with all nil elements removed.
+  #
+  def compact
+
+    load_parent_state
+    
+    return super
+
+  end
+
+  ##########
+  #  drop  #
+  ##########
+  
+  ###
+  # Drops first n elements from ary and returns the rest of the elements in an array.
+  #
+  def drop( number )
+
+    load_parent_state
+    
+    return super
+
+  end
+  
+  ################
+  #  drop_while  #
+  ################
+  
+  ###
+  # Drops elements up to, but not including, the first element for which the block returns 
+  #   nil or false and returns an array containing the remaining elements.
+  #   If no block is given, an enumerator is returned instead.
+  #
+  def drop_while( & block )
+
+    load_parent_state
+    
+    return super
+
+  end
+
   ##############
   #  include?  #
   ##############
@@ -567,6 +649,256 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
+  #############
+  #  flatten  #
+  #############
+  
+  ###
+  # Returns a new array that is a one-dimensional flattening of this array (recursively). That is, 
+  #   for every element that is an array, extract its elements into the new array. 
+  #   If the optional level argument determines the level of recursion to flatten.
+  #
+  def flatten( level = 1 )
+
+    load_parent_state
+    
+    return super
+
+  end
+
+  #############
+  #  product  #
+  #############
+  
+  ###
+  # Returns an array of all combinations of elements from all arrays. The length of the 
+  #   returned array is the product of the length of self and the argument arrays. 
+  #   If given a block, product will yield all combinations and return self instead.
+  #
+  def product( *other_arrays, & block )
+
+    load_parent_state
+    
+    return super
+
+  end
+
+  ############
+  #  reject  #
+  ############
+  
+  ###
+  # Returns a new array containing the items in self for which the block is not true. 
+  #   See also Array#delete_if
+  #   If no block is given, an enumerator is returned instead.
+  #
+  def reject( & block )
+
+    load_parent_state
+    
+    return super
+
+  end
+  
+  #############
+  #  reverse  #
+  #############
+  
+  ###
+  # Returns a new array containing self‘s elements in reverse order.
+  #
+  def reverse
+
+    load_parent_state
+    
+    return super
+
+  end
+  
+  ############
+  #  rotate  #
+  ############
+  
+  ###
+  # Returns new array by rotating self so that the element at cnt in self is the first element of the 
+  #   new array. If cnt is negative then it rotates in the opposite direction.
+  #
+  def rotate( rotate_count = 1 )
+    
+    load_parent_state
+    
+    return super
+    
+  end
+
+  ############
+  #  select  #
+  ############
+  
+  ###
+  # Invokes the block passing in successive elements from self, returning an array containing those 
+  #   elements for which the block returns a true value (equivalent to Enumerable#select).
+  #   If no block is given, an enumerator is returned instead.
+  #
+  def select( & block )
+
+    load_parent_state
+    
+    return super
+
+  end
+  
+  #############
+  #  shuffle  #
+  #############
+  
+  ###
+  # Returns a new array with elements of this array shuffled.
+  #   If rng is given, it will be used as the random number generator.
+  #
+  def shuffle( random_number_generator = nil )
+
+    load_parent_state
+    
+    return super
+  
+  end
+  
+  ###########
+  #  slice  #
+  ###########
+  
+  ###
+  # Element Reference—Returns the element at index, or returns a subarray starting at start and 
+  #   continuing for length elements, or returns a subarray specified by range. Negative indices 
+  #   count backward from the end of the array (-1 is the last element). Returns nil if the index 
+  #   (or starting index) are out of range.
+  #
+  def slice( index_start_or_range, slice_length = nil )
+
+    load_parent_state
+    
+    return super
+
+  end
+  
+  ##########
+  #  sort  #
+  ##########
+  
+  ###
+  # Returns a new array created by sorting self. Comparisons for the sort will be done using 
+  #   the <=> operator or using an optional code block. The block implements a comparison between 
+  #   a and b, returning -1, 0, or +1. See also Enumerable#sort_by.
+  #
+  def sort( & block )
+
+    load_parent_state
+    
+    return super
+  
+  end
+  
+  #############
+  #  sort_by  #
+  #############
+
+  ###
+  # Returns a new array created by using a set of keys generated by mapping the values in self through 
+  #   the given block.
+  #   If no block is given, an enumerator is returned instead.
+  #
+  def sort_by( & block )
+
+    load_parent_state
+    
+    return super
+
+  end
+  
+  ################
+  #  take_while  #
+  ################
+  
+  ###
+  # Passes elements to the block until the block returns nil or false, then stops iterating 
+  #   and returns an array of all prior elements.
+  #   If no block is given, an enumerator is returned instead.
+  #
+  def take_while( & block )
+  
+    load_parent_state
+    
+    return super
+
+  end
+  
+  ###############
+  #  transpose  #
+  ###############
+  
+  ###
+  # Assumes that self is an array of arrays and transposes the rows and columns.
+  #
+  def transpose
+  
+    load_parent_state
+    
+    return super
+
+  end
+  
+  ##########
+  #  uniq  #
+  ##########
+  
+  ###
+  # Returns a new array by removing duplicate values in self. If a block is given, it will use the 
+  #   return value of the block for comparison.
+  #
+  def uniq( & block )
+  
+    load_parent_state
+    
+    return super
+
+  end
+  
+  ###############
+  #  values_at  #
+  ###############
+  
+  ###
+  # Returns an array containing the elements in self corresponding to the given selector(s). 
+  #   The selectors may be either integer indices or ranges. See also Array#select.
+  #
+  def values_at( *selectors )
+  
+    load_parent_state
+    
+    return super
+
+  end
+  
+  #########
+  #  zip  #
+  #########
+  
+  ###
+  # Converts any arguments to arrays, then merges elements of self with corresponding elements 
+  #   from each argument. This generates a sequence of self.size n-element arrays, where n is 
+  #   one more that the count of arguments. If the size of any argument is less than enumObj.size, 
+  #   nil values are supplied. If a block is given, it is invoked for each output array, otherwise 
+  #   an array of arrays is returned.
+  #
+  def zip( *other_arrays, & block )
+
+    load_parent_state
+    
+    return super
+  
+  end
+  
   ########
   #  []  #
   ########
