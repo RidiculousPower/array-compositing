@@ -138,9 +138,21 @@ describe ::Array::Compositing::CascadeController do
 
   context '#unregister_parent' do
     before :each do
-      index_map.unregister_parent( parent_array_two ).each do |this_index|
-        array_instance.delete_at( this_index )
+      parent_indexes_in_local = index_map.local_parent_map( parent_array_two ).compact
+      local_indexes = parent_indexes_in_local.collect do |this_parent_index|
+        index_map.local_index( parent_array_two, this_parent_index )
       end
+      parent_indexes_in_local.sort!
+      parent_indexes_in_local.reverse!
+      local_indexes.sort!
+      local_indexes.reverse!
+      parent_indexes_in_local.each_with_index do |this_parent_index|
+        index_map.parent_delete_at( parent_array_two, this_parent_index )
+      end
+      local_indexes.each_with_index do |this_local_index|
+        array_instance.delete_at( this_local_index )
+      end
+      index_map.unregister_parent( parent_array_two )
     end
     it 'will unregister elements from parent' do
 

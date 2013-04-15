@@ -179,27 +179,12 @@ class ::Array::Compositing::CascadeController
   #
   def unregister_parent( parent_array )
   
-    local_indexes_to_delete = nil
-    
-    if @parent_local_maps and 
-       local_indexes_to_delete = @parent_local_maps.delete( parent_id = parent_array.__id__ )
-
+    if @parent_local_maps
+      @parent_local_maps.delete( parent_id = parent_array.__id__ )
       @local_parent_maps.delete( parent_id )
-
-      local_indexes_to_delete.compact!
-      local_indexes_to_delete.sort!
-      local_indexes_to_delete.reverse!
-
-      # delete each index, biggest to smallest
-      local_indexes_to_delete.each do |this_local_index|
-        @local_index_to_parent_map.delete_at( this_local_index )
-        @requires_lookup.delete_at( this_local_index )
-        renumber_local_indexes_for_delete( this_local_index )
-      end
-
     end
     
-    return local_indexes_to_delete
+    return self
 
   end
   
@@ -309,14 +294,10 @@ class ::Array::Compositing::CascadeController
     
     # when local takes control of a parent index, parent => local index mapping does not cease
     # instead, we track where it moves so that we can insert at precisely that point later if needed    
-    if parent_index >= parent_local_map.size
-
-      parent_controls_parent_index = true
-
-    elsif @local_index_to_parent_map                                       and
-          local_index = parent_local_map[ parent_index ]                   and
-          @local_index_to_parent_map[ local_index ].equal?( parent_array ) and
-          parent_index == local_parent_map[ local_index ]
+    if @local_index_to_parent_map                                       and
+       local_index = parent_local_map[ parent_index ]                   and
+       @local_index_to_parent_map[ local_index ].equal?( parent_array ) and
+       parent_index == local_parent_map[ local_index ]
 
       parent_controls_parent_index = true
 
@@ -688,7 +669,7 @@ class ::Array::Compositing::CascadeController
       local_index = parent_insert( parent_array, parent_index, 1, parent_local_map, local_parent_map )
     elsif parent_controls_parent_index?( parent_array, parent_index, parent_local_map, local_parent_map )
       local_index = local_index( parent_array, parent_index, parent_local_map )
-      @requires_lookup[ local_index ] = true 
+      @requires_lookup[ local_index ] = true
     end
     
     return local_index
@@ -800,6 +781,22 @@ class ::Array::Compositing::CascadeController
     
   end
 
+  ##############################
+  #  local_indexes_for_parent  #
+  ##############################
+
+  def local_indexes_for_parent( parent_array )
+    
+    local_indexes_for_parent = [ ]
+    
+    local_parent_map( parent_array ).each_with_index do |this_parent_index, this_local_index|
+      local_indexes_for_parent.push( this_local_index ) if this_parent_index
+    end
+    
+    return local_indexes_for_parent
+    
+  end
+  
   ###################
   #  local_shuffle  #
   ###################

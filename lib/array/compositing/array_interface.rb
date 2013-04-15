@@ -134,6 +134,31 @@ module ::Array::Compositing::ArrayInterface
     end
   end
 
+  #####################################
+  #  non_cascading_delete_at_indexes  #
+  #####################################
+  
+  ###
+  # Perform delete_at on multiple indexes.
+  #
+  # @overload non_cascading_delete_at_indexes( index, ... )
+  #
+  #   @param [Integer] index
+  #
+  #          Index that should be deleted.
+  #
+  # @return [Array<Object>]
+  #
+  #         Objects deleted.
+  #
+  cluster( :non_cascading_delete_at ).before_include.cascade_to( :class ) do |hooked_instance|
+    hooked_instance.class_eval do
+      unless method_defined?( :non_cascading_delete_at_indexes )
+        alias_method :non_cascading_delete_at_indexes, :delete_at_indexes
+      end
+    end
+  end
+
   ###################################  Sub-Array Management  #######################################
 
   #####################
@@ -163,6 +188,7 @@ module ::Array::Compositing::ArrayInterface
       @cascade_controller.register_parent( parent_array )
       # insert placeholders so we don't have to stub :count, etc.
       # we want undecorated because we are just inserting placeholders, hooks are called at lazy-load
+      insert_at_index ||= size
       parent_array.size.times { |this_time| undecorated_insert( insert_at_index, nil ) }
     end
     
@@ -187,13 +213,14 @@ module ::Array::Compositing::ArrayInterface
   #
   def unregister_parent( parent_array )
     
-    if local_indexes_to_delete = @cascade_controller.unregister_parent( parent_array )
-      delete_at_indexes( *local_indexes_to_delete )
+    if @parents.delete( parent_array )
+      parent_array.each_with_index do |this_object, this_parent_index|
+        update_for_parent_delete_at( parent_array, this_parent_index, this_object )
+      end
+      @cascade_controller.unregister_parent( parent_array )
+      parent_array.unregister_child( self )
     end
     
-    @parents.delete( parent_array )
-    parent_array.unregister_child( self )
-
     return self
     
   end
