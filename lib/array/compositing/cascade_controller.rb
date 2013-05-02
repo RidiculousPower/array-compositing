@@ -419,6 +419,29 @@ class ::Array::Compositing::CascadeController
     
   end
 
+  ######################
+  #  requires_lookup!  #
+  ######################
+  
+  ###
+  # Declare that local index requires look up.
+  #
+  # @params [Integer] local_index
+  # 
+  #         Index in local array instance.
+  # 
+  # @return [self] 
+  #
+  #         Self.
+  #
+  def requires_lookup!( local_index )
+    
+    @requires_lookup[ local_index ] = true
+    
+    return self
+    
+  end
+
   #######################################
   #  renumber_local_indexes_for_delete  #
   #######################################
@@ -821,16 +844,16 @@ class ::Array::Compositing::CascadeController
     
     new_local_order = [ ]
 
-    nth_control_index = nil
+    nth_parent_index = nil
     new_parent_order.each_with_index do |this_new_parent_index, this_existing_parent_index|
       if parent_controls_parent_index?( parent_array, this_new_parent_index, parent_local_map, local_parent_map )        
         # existing_local_index: the local index controlled by new_parent_index
         this_existing_local_index = parent_local_map[ this_new_parent_index ]
         # new_local_index: the first (or next) local index controlled by parent
         if parent_controls_parent_index?( parent_array, this_existing_parent_index, parent_local_map, local_parent_map )
-          this_new_local_index = nth_control_index = parent_local_map[ this_existing_parent_index ]
+          this_new_local_index = nth_parent_index = parent_local_map[ this_existing_parent_index ]
         else
-          this_new_local_index = nth_control_index = local_parent_map.next_parent_controlled_index( nth_control_index )
+          this_new_local_index = nth_parent_index = local_parent_map.next_parent_controlled_index( nth_parent_index )
         end
         new_local_order[ this_new_local_index ] = this_existing_local_index
       end
@@ -886,6 +909,46 @@ class ::Array::Compositing::CascadeController
     return new_local_order
     
   end
+  
+  #################
+  #  parent_sort  #
+  #################
+  
+  def parent_sort( parent_array, new_parent_order, 
+                   parent_local_map = parent_local_map( parent_array ),
+                   local_parent_map = local_parent_map( parent_array ) )
+                   
+    # parent elements in child should end up in same order as new parent order
+    new_local_order = [ ]
+
+    nth_parent_index = nil
+    new_parent_order.each_with_index do |this_new_parent_index, this_existing_parent_index|
+      if parent_controls_parent_index?( parent_array, this_new_parent_index, parent_local_map, local_parent_map )        
+        # existing_local_index: the local index controlled by new_parent_index
+        this_existing_local_index = parent_local_map[ this_new_parent_index ]
+        # new_local_index: the next local index controlled by parent
+        this_new_local_index = nth_parent_index = local_parent_map.next_parent_controlled_index( nth_parent_index )
+        new_local_order[ this_new_local_index ] = this_existing_local_index
+      end
+    end
+    
+    existing_requires_lookup = @requires_lookup
+    @requires_lookup = [ ]
+    new_local_order.each_with_index do |this_new_local_index, this_existing_local_index|
+      if this_new_local_index
+        @requires_lookup[ this_new_local_index ] = existing_requires_lookup[ this_existing_local_index ]
+      end
+    end
+
+    return new_local_order
+    
+  end
+  
+  ################
+  #  local_sort  #
+  ################
+  
+  alias_method :local_sort, :local_reorder
 
   #################
   #  parent_move  #

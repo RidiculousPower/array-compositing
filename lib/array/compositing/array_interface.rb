@@ -9,7 +9,7 @@ module ::Array::Compositing::ArrayInterface
   ParentIndexStruct = ::Struct.new( :local_index, :replaced )
 
   extend ::Module::Cluster
-    
+  
   ################
   #  initialize  #
   ################
@@ -214,7 +214,7 @@ module ::Array::Compositing::ArrayInterface
   def unregister_parent( parent_array )
     
     if @parents.delete( parent_array )
-      parent_array.each_with_index do |this_object, this_parent_index|
+      parent_array.reverse_each_range do |this_object, this_parent_index|
         update_for_parent_delete_at( parent_array, this_parent_index, this_object )
       end
       @cascade_controller.unregister_parent( parent_array )
@@ -941,12 +941,21 @@ module ::Array::Compositing::ArrayInterface
   #
   def sort!( & block )
     
-    replace( @internal_array.sort( & block ) )
+    block ||= @sort_order_reversed ? ::Array::ReverseSortBlock
+                                   : ::Array::SortBlock
+    
+    new_local_sort_order = [ ]
+    @internal_array.size.times { |this_time| new_local_sort_order.push( this_time ) }
+    new_local_sort_order.sort! do |index_one, index_two| 
+      block.call( @internal_array[ index_one ], @internal_array[ index_two ] )
+    end
+
+    reorder_from_sort( new_local_sort_order )
     
     return self
 
   end
-
+  
   ##############
   #  sort_by!  #
   ##############
@@ -960,10 +969,34 @@ module ::Array::Compositing::ArrayInterface
 
     return to_enum unless block_given?
 
-    replace( @internal_array.sort_by( & block ) )
+    new_local_sort_order = [ ]
+    @internal_array.size.times { |this_time| new_local_sort_order.push( this_time ) }
+    new_local_sort_order.sort_by! { |this_index| block.call( @internal_array[ this_index ] ) }
+
+    reorder_from_sort( new_local_sort_order )
 
     return self
 
+  end
+  
+  #######################
+  #  reorder_from_sort  #
+  #######################
+  
+  def reorder_from_sort( new_local_sort_order )
+
+    @cascade_controller.local_sort( new_local_sort_order )
+
+    existing_data = @internal_array
+    @internal_array = [ ]
+    new_local_sort_order.each_with_index do |this_existing_index, this_new_index|
+      @internal_array[ this_new_index ] = existing_data[ this_existing_index ]
+    end
+
+    @children.each { |this_array| this_array.update_for_parent_sort( self, new_local_sort_order ) }
+    
+    return self
+    
   end
 
   ###############
@@ -1007,17 +1040,17 @@ module ::Array::Compositing::ArrayInterface
   #  reorder  #
   #############
   
-  def reorder( new_local_index_order_array )
+  def reorder( new_local_index_order )
     
-    @cascade_controller.local_reorder( new_local_index_order_array )
+    @cascade_controller.local_reorder( new_local_index_order )
 
     existing_data = @internal_array
     @internal_array = [ ]
-    new_local_index_order_array.each_with_index do |this_new_index, this_existing_index|
+    new_local_index_order.each_with_index do |this_new_index, this_existing_index|
       @internal_array[ this_new_index ] = existing_data[ this_existing_index ]
     end
 
-    @children.each { |this_array| this_array.update_for_parent_reorder( self, new_local_index_order_array ) }
+    @children.each { |this_array| this_array.update_for_parent_reorder( self, new_local_index_order ) }
     
     return self
     
@@ -1300,7 +1333,10 @@ module ::Array::Compositing::ArrayInterface
   #
   def update_for_parent_set( parent_array, parent_index, object )
     
-    if @cascade_controller.parent_controls_parent_index?( parent_array, parent_index )
+    parent_local_map = @cascade_controller.parent_local_map( parent_array )
+    
+    if @cascade_controller.parent_controls_parent_index?( parent_array, parent_index, parent_local_map ) or
+       parent_index >= parent_local_map.size
       local_index = @cascade_controller.parent_set( parent_array, parent_index )
       undecorated_set( local_index, nil )
       @children.each { |this_array| this_array.update_for_parent_set( local_index, object ) }
@@ -1412,18 +1448,38 @@ module ::Array::Compositing::ArrayInterface
   
   def update_for_parent_reorder( parent_array, new_parent_index_order_array )
 
-    new_local_index_order_array = @cascade_controller.parent_reorder( parent_array, new_parent_index_order_array )
+    new_local_index_order = @cascade_controller.parent_reorder( parent_array, new_parent_index_order_array )
     
     existing_data = @internal_array
     @internal_array = [ ]
-    new_local_index_order_array.each_with_index do |this_new_local_index, this_existing_local_index|
+    new_local_index_order.each_with_index do |this_new_local_index, this_existing_local_index|
       @internal_array[ this_new_local_index ] = existing_data[ this_existing_local_index ]
     end
 
-    @children.each { |this_array| this_array.update_for_parent_reorder( self, new_local_index_order_array ) }
+    @children.each { |this_array| this_array.update_for_parent_reorder( self, new_local_index_order ) }
 
     return self
 
+  end
+
+  ############################
+  #  update_for_parent_sort  #
+  ############################
+  
+  def update_for_parent_sort( parent_array, new_parent_sort_order )
+    
+    new_local_index_order = @cascade_controller.parent_sort( parent_array, new_parent_sort_order )
+    
+    existing_data = @internal_array
+    @internal_array = [ ]
+    new_local_index_order.each_with_index do |this_new_local_index, this_existing_local_index|
+      @internal_array[ this_new_local_index ] = existing_data[ this_existing_local_index ]
+    end
+
+    @children.each { |this_array| this_array.update_for_parent_sort( self, new_local_index_order ) }
+
+    return self
+    
   end
 
   ############################

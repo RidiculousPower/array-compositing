@@ -589,36 +589,28 @@ describe ::Array::Compositing do
   ###########
 
   context '#sort!' do
-    let( :parent_elements ) { [ :A, :B, :C ] }
+    let( :parent_elements ) { [ :A, :D, :F, :C, :B, :E ] }
     it 'can replace by collect/map' do
 
-      parent_array.sort! do |a, b|
-        if a < b
-          1
-        elsif a > b
-          -1
-        elsif a == b
-          0
-        end
-      end
-      parent_array.should == [ :C, :B, :A ]
-      child_array.should == [ :C, :B, :A ]
+      parent_array.sort!( & ::Array::ReverseSortBlock )
+      parent_array.should == [ :F, :E, :D, :C, :B, :A ]
+      child_array.should == [ :F, :E, :D, :C, :B, :A ]
 
-      child_array.sort! do |a, b|
-        if a < b
-          -1
-        elsif a > b
-          1
-        elsif a == b
-          0
-        end
-      end
-      parent_array.should == [ :C, :B, :A ]
-      child_array.should == [ :A, :B, :C ]
+      child_array.sort!
+      parent_array.should == [ :F, :E, :D, :C, :B, :A ]
+      child_array.should == [ :A, :B, :C, :D, :E, :F ]
 
       parent_array.sort!
-      parent_array.should == [ :A, :B, :C ]
-      child_array.should == [ :A, :B, :C ]
+      parent_array.should == [ :A, :B, :C, :D, :E, :F ]
+      child_array.should == [ :A, :B, :C, :D, :E, :F ]
+
+      child_array.sort!( & ::Array::ReverseSortBlock )
+      parent_array.should == [ :A, :B, :C, :D, :E, :F ]
+      child_array.should == [ :F, :E, :D, :C, :B, :A ]
+
+      parent_array.sort!
+      parent_array.should == [ :A, :B, :C, :D, :E, :F ]
+      child_array.should == [ :F, :E, :D, :C, :B, :A ]
 
     end
   end
@@ -628,34 +620,46 @@ describe ::Array::Compositing do
   ##############
 
   context '#sort_by!' do
-    let( :parent_elements ) { [ :A, :B, :C ] }
+    let( :parent_elements ) { [ :A, :D, :F, :C, :B, :E ] }
     it 'can replace by collect/map' do
 
       parent_array.sort_by! do |object|
         case object
-        when :A
-          :B
-        when :B
-          :A
-        when :C
-          :C
+          when :A
+            3
+          when :B
+            4
+          when :C
+            2
+          when :D
+            1
+          when :E
+            6
+          when :F
+            5
         end
       end
-      parent_array.should == [ :B, :A, :C ]
-      child_array.should == [ :B, :A, :C ]
+      parent_array.should == [ :D, :C, :A, :B, :F, :E ]
+      child_array.should == [ :D, :C, :A, :B, :F, :E ]
 
       child_array.sort_by! do |object|
         case object
-        when :A
-          :C
-        when :B
-          :B
-        when :C
-          :A
+          when :B
+            4
+          when :A
+            6
+          when :C
+            5
+          when :D
+            3
+          when :E
+            2
+          when :F
+            1
         end
       end
-      parent_array.should == [ :B, :A, :C ]
-      child_array.should == [ :C, :B, :A ]
+      parent_array.should == [ :D, :C, :A, :B, :F, :E ]
+      child_array.should == [ :F, :E, :D, :B, :C, :A ]
 
       parent_array.sort_by!.is_a?( Enumerator ).should == true
 
