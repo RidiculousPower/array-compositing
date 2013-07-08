@@ -7,8 +7,6 @@ module ::Array::Compositing::ArrayInterface
   instances_identify_as!( ::Array::Compositing )
 
   ParentIndexStruct = ::Struct.new( :local_index, :replaced )
-
-  extend ::Module::Cluster
   
   ################
   #  initialize  #
@@ -44,19 +42,6 @@ module ::Array::Compositing::ArrayInterface
     
   end
 
-  ########################
-  #  cascade_controller  #
-  ########################
-
-  ###
-  # @!attribute [r]
-  #
-  # @return [Array::Compositing:CascadeController] 
-  #
-  #        The parent index map tracking array instance.
-  #
-  attr_reader :cascade_controller
-
   ###################################  Non-Cascading Behavior  ####################################
 
   #######################
@@ -80,9 +65,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Object set.
   #
-  cluster( :non_cascading_set ).before_include.cascade_to( :class ) do |hooked_instance|
-    hooked_instance.class_eval { alias_method :non_cascading_set, :[]= unless method_defined?( :non_cascading_set ) }
-  end
+  alias_method :non_cascading_set, :[]=
 
   ##########################
   #  non_cascading_insert  #
@@ -105,11 +88,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Objects inserted.
   #
-  cluster( :non_cascading_insert ).before_include.cascade_to( :class ) do |hooked_instance|
-    hooked_instance.class_eval do
-      alias_method :non_cascading_insert, :insert unless method_defined?( :non_cascading_insert )
-    end
-  end
+  alias_method :non_cascading_insert, :insert
   
   #############################
   #  non_cascading_delete_at  #
@@ -128,11 +107,7 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Object set.
   #
-  cluster( :non_cascading_delete_at ).before_include.cascade_to( :class ) do |hooked_instance|
-    hooked_instance.class_eval do
-      alias_method :non_cascading_delete_at, :delete_at unless method_defined?( :non_cascading_delete_at )
-    end
-  end
+  alias_method :non_cascading_delete_at, :delete_at
 
   #####################################
   #  non_cascading_delete_at_indexes  #
@@ -151,13 +126,20 @@ module ::Array::Compositing::ArrayInterface
   #
   #         Objects deleted.
   #
-  cluster( :non_cascading_delete_at ).before_include.cascade_to( :class ) do |hooked_instance|
-    hooked_instance.class_eval do
-      unless method_defined?( :non_cascading_delete_at_indexes )
-        alias_method :non_cascading_delete_at_indexes, :delete_at_indexes
-      end
-    end
-  end
+  alias_method :non_cascading_delete_at_indexes, :delete_at_indexes
+
+  ########################
+  #  cascade_controller  #
+  ########################
+
+  ###
+  # @!attribute [r]
+  #
+  # @return [Array::Compositing:CascadeController] 
+  #
+  #        The parent index map tracking array instance.
+  #
+  attr_reader :cascade_controller
 
   ###################################  Sub-Array Management  #######################################
 

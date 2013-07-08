@@ -61,3 +61,7 @@ Updated to support multiple parents.
 ## 11/24/2012 ##
 
 Updated for fake Array inheritance support since inheriting from Array prevents #to_a from being called at splat.
+
+## 7/08/2013 ##
+
+Removed module-cluster dependency so that module-cluster can use hooked and compositing objects.
