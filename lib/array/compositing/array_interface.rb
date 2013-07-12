@@ -166,16 +166,40 @@ module ::Array::Compositing::ArrayInterface
   def register_parent( parent_array, insert_at_index = size )
     
     unless @parents.include?( parent_array )
-      @parents.push( parent_array.register_child( self ) )
-      @cascade_controller.register_parent( parent_array, insert_at_index )
-      # insert placeholders so we don't have to stub :count, etc.
-      # we want undecorated because we are just inserting placeholders, hooks are called at lazy-load
+      parent_array.register_child( self )
+      @parents.push( parent_array )
+      @cascade_controller.register_parent( parent_array, insert_at_index, false )
       insert_at_index ||= size
-      parent_array.size.times { |this_time| undecorated_insert( insert_at_index, nil ) }
+      parent_local_map = @cascade_controller.parent_local_map( parent_array )
+      local_parent_map = @cascade_controller.local_parent_map( parent_array )
+      filtered_objects = 0
+      parent_array.size.times do |this_parent_index|
+        unless register_parent_index( parent_array, 
+                                      this_parent_index, 
+                                      insert_at_index + this_parent_index - filtered_objects )
+          filtered_objects += 1
+        end
+      end
     end
     
     return self
 
+  end
+  
+  ###########################
+  #  register_parent_index  #
+  ###########################
+  
+  def register_parent_index( parent_array, parent_index, insert_at_index )
+    
+    # insert placeholders so we don't have to stub :count, etc.
+    # we want undecorated because we are just inserting placeholders, hooks are called at lazy-load
+    undecorated_insert( insert_at_index, nil )
+
+    @cascade_controller.parent_insert( parent_array, parent_index, 1, insert_at_index )
+    
+    return true
+    
   end
   
   #######################

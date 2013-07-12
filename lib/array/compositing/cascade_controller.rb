@@ -136,11 +136,20 @@ class ::Array::Compositing::CascadeController
   #
   #        Instance from which instance will inherit elements.
   #
+  # @param [Integer] insert_at_index
+  #
+  #        Index where parent array will be inserted.
+  #
+  # @param [True,False] cc_auto_inserts
+  #
+  #        Whether the Array instance handles inserting parent elements 
+  #        to the cascade controller or the cascade controller should.
+  #
   # @return [Array::Compositing::CascadeController] 
   #
   #         Self.
   #
-  def register_parent( parent_array, insert_at_index = @array_instance.size )
+  def register_parent( parent_array, insert_at_index = @array_instance.size, cc_auto_inserts = true )
     
     @parent_local_maps ||= { }
     @local_parent_maps ||= { }
@@ -152,8 +161,8 @@ class ::Array::Compositing::CascadeController
     
     # map each element to corresponding local
     parent_element_count = parent_array.size
-    if parent_element_count > 0
-      parent_insert( parent_array, 0, parent_element_count, parent_local_map, local_parent_map, insert_at_index )
+    if cc_auto_inserts and parent_element_count > 0
+      parent_insert( parent_array, 0, parent_element_count, insert_at_index, parent_local_map, local_parent_map )
     end
     
     return self
@@ -545,10 +554,9 @@ class ::Array::Compositing::CascadeController
   #
   #         Local index where insert took place.
   #
-  def parent_insert( parent_array, parent_index, count, 
+  def parent_insert( parent_array, parent_index, count, insert_at_index = nil,
                      parent_local_map = parent_local_map( parent_array ), 
-                     local_parent_map = local_parent_map( parent_array ),
-                     insert_at_index = nil )
+                     local_parent_map = local_parent_map( parent_array ) )
 
     # We track parent location in locals even after local idex has been replaced.
     # This permits inserts before a given parent index to be mapped to the appropriate location in local.
@@ -700,7 +708,7 @@ class ::Array::Compositing::CascadeController
     local_index = nil
 
     if parent_index >= parent_local_map.size
-      local_index = parent_insert( parent_array, parent_index, 1, parent_local_map, local_parent_map )
+      local_index = parent_insert( parent_array, parent_index, 1, nil, parent_local_map, local_parent_map )
     elsif parent_controls_parent_index?( parent_array, parent_index, parent_local_map, local_parent_map )
       local_index = local_index( parent_array, parent_index, parent_local_map )
       @requires_lookup[ local_index ] = true
