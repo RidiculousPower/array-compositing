@@ -167,7 +167,7 @@ module ::Array::Compositing::ArrayInterface
     
     unless @parents.include?( parent_array )
       @parents.push( parent_array.register_child( self ) )
-      @cascade_controller.register_parent( parent_array )
+      @cascade_controller.register_parent( parent_array, insert_at_index )
       # insert placeholders so we don't have to stub :count, etc.
       # we want undecorated because we are just inserting placeholders, hooks are called at lazy-load
       insert_at_index ||= size
@@ -1189,7 +1189,7 @@ module ::Array::Compositing::ArrayInterface
     @cascade_controller.each_index_requiring_lookup( parent_array ) do |this_local_index|
       lazy_set_parent_element_in_self( this_local_index )
     end if @cascade_controller
-    
+
     return self
     
   end
@@ -1251,12 +1251,11 @@ module ::Array::Compositing::ArrayInterface
   def lazy_set_parent_element_in_self( local_index, optional_object = nil, passed_optional_object = false )
 
     object = nil
-    
     if @cascade_controller.requires_lookup?( local_index )
 
-      parent_index = @cascade_controller.parent_index( local_index )
       parent_array = @cascade_controller.parent_array( local_index )
-      
+      parent_index = @cascade_controller.parent_index( local_index, parent_array )
+
       object = passed_optional_object ? optional_object : parent_array[ parent_index ]
         
       # We call hooks manually so that we can do a direct undecorated set.
@@ -1272,7 +1271,7 @@ module ::Array::Compositing::ArrayInterface
       end
     
       object = pre_set_hook( local_index, object, false, 1 ) unless @without_hooks
-    
+
       undecorated_set( local_index, object )
 
       @cascade_controller.looked_up!( local_index )
@@ -1281,9 +1280,9 @@ module ::Array::Compositing::ArrayInterface
       child_post_set_hook( local_index, object, false, parent_array ) unless @without_child_hooks
 
     else
-      
+
       object = undecorated_get( local_index )
-      
+
     end
           
     return object

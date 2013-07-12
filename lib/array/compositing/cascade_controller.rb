@@ -140,7 +140,7 @@ class ::Array::Compositing::CascadeController
   #
   #         Self.
   #
-  def register_parent( parent_array, local_index = @array_instance.size )
+  def register_parent( parent_array, insert_at_index = @array_instance.size )
     
     @parent_local_maps ||= { }
     @local_parent_maps ||= { }
@@ -153,7 +153,7 @@ class ::Array::Compositing::CascadeController
     # map each element to corresponding local
     parent_element_count = parent_array.size
     if parent_element_count > 0
-      parent_insert( parent_array, 0, parent_element_count, parent_local_map, local_parent_map )
+      parent_insert( parent_array, 0, parent_element_count, parent_local_map, local_parent_map, insert_at_index )
     end
     
     return self
@@ -547,7 +547,8 @@ class ::Array::Compositing::CascadeController
   #
   def parent_insert( parent_array, parent_index, count, 
                      parent_local_map = parent_local_map( parent_array ), 
-                     local_parent_map = local_parent_map( parent_array ) )
+                     local_parent_map = local_parent_map( parent_array ),
+                     insert_at_index = nil )
 
     # We track parent location in locals even after local idex has been replaced.
     # This permits inserts before a given parent index to be mapped to the appropriate location in local.
@@ -560,16 +561,26 @@ class ::Array::Compositing::CascadeController
     #   => child inserts at location where 2 would have been (parent index 2 => child index 3)
     #   => child [0, 1, A, i, B, C, 4]
 
-    parent_index = parent_index < 0 ? parent_array.size + parent_index : parent_index
-    
+    parent_index = parent_index < 0 ? parent_array.size + parent_index 
+                                    : parent_index
+    local_index  = insert_at_index  ? insert_at_index
+                                    : local_index( parent_array, parent_index, parent_local_map )
+
     # renumber parent indexes for insert
     local_parent_map.renumber_mapped_indexes_for_insert( parent_index, count )
-
-    local_index = local_index( parent_array, parent_index, parent_local_map )
+    
+    # insert nil count times for local_parent_maps other than the one owned by this array
+    @local_parent_maps.each do |this_parent_array_id, this_local_parent_map|
+      next if this_local_parent_map.equal?( local_parent_map )
+      count.times do |this_time|
+        this_local_index = local_index + this_time
+        this_local_parent_map.insert( this_local_index, nil )
+      end
+    end
     
     # renumber all local indexes for insert
     renumber_local_indexes_for_insert( local_index, count )
-    
+
     count.times do |this_time|
       this_local_index = local_index + this_time
       this_parent_index = parent_index + this_time
