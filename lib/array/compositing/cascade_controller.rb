@@ -218,9 +218,9 @@ class ::Array::Compositing::CascadeController
   # 
   #         Index in local array instance.
   #
-  # @return [Array::Compositing::CascadeController::ParentIndexStruct] 
+  # @return [Integer]
   #
-  #         Struct containing parent instance and index.
+  #         Parent index.
   #
   def parent_index( local_index, parent_array = parent_array( local_index ), local_parent_map = nil )
     

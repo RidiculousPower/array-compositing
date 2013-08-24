@@ -6,8 +6,6 @@ module ::Array::Compositing::ArrayInterface
   
   instances_identify_as!( ::Array::Compositing )
 
-  ParentIndexStruct = ::Struct.new( :local_index, :replaced )
-  
   ################
   #  initialize  #
   ################
@@ -353,6 +351,34 @@ module ::Array::Compositing::ArrayInterface
   #         Whether potential_parent_array is a parent of instance.
   #
   def is_parent?( potential_parent_array )
+    
+    is_parent = false
+    
+    @parents.each do |this_parent|
+      break if is_parent = this_parent.equal?( potential_parent_array )     or 
+               is_parent = this_parent.is_parent?( potential_parent_array )
+    end
+    
+    return is_parent
+    
+  end
+
+  ##########################
+  #  is_immediate_parent?  #
+  ##########################
+  
+  ###
+  # Query whether instance has instance as a first-level parent instance from which it inherits elements.
+  #
+  # @params [Array::Compositing] potential_parent_array
+  # 
+  #         Instance being queried.
+  # 
+  # @return [true,false] 
+  #
+  #         Whether potential_parent_array is a parent of instance.
+  #
+  def is_immediate_parent?( potential_parent_array )
     
     return @parents.include?( potential_parent_array )
     
